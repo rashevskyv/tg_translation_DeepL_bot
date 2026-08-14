@@ -45,6 +45,16 @@ async def test_update_user_provider(temp_db):
 
 
 @pytest.mark.asyncio
+async def test_update_assistant_settings(temp_db):
+    user_id = 123456
+    await temp_db.set_assistant_mode(user_id, True)
+    await temp_db.set_assistant_provider(user_id, "openai_luna")
+    settings = await temp_db.get_user_settings(user_id)
+    assert settings.assistant_mode is True
+    assert settings.assistant_provider == "openai_luna"
+
+
+@pytest.mark.asyncio
 async def test_user_api_keys_crud(temp_db):
     user_id = 999
     # Initially no key

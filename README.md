@@ -1,6 +1,6 @@
 # Telegram Translation Bot (DeepL & OpenRouter LLMs)
 
-A modern, high-performance, asynchronous Telegram bot for automated bidirectional translations between **Ukrainian** and any foreign language with support for **DeepL Standalone** and top-tier LLMs via **OpenRouter** (`Gemini 3.5 Flash Lite`, `Gemini 3.7 Flash`, `GPT-5.6 Luna`, `DeepSeek V4 Flash`) running in **Non-Thinking mode**.
+A modern, high-performance, asynchronous Telegram bot for automated bidirectional translations between **Ukrainian** and any foreign language with support for **DeepL Standalone**, top-tier LLMs via **OpenRouter** (`Gemini 3.5 Flash Lite`, `Gemini 3.7 Flash`, `GPT-5.6 Luna`, `DeepSeek V4 Flash`) running in **Non-Thinking mode**, and an **Intelligent Assistant Mode** with context clarification.
 
 ---
 
@@ -9,21 +9,31 @@ A modern, high-performance, asynchronous Telegram bot for automated bidirectiona
 - **Smart Bidirectional Translation:**
   - **Ukrainian text** $\rightarrow$ Automatically translated into your configured **Target Language** (e.g. Portuguese, English, German, Polish, Spanish, etc.).
   - **Foreign text (non-Ukrainian)** $\rightarrow$ Language is automatically detected and translated into **Ukrainian**.
-- **Supported Translation Engines:**
-  - 🔵 **DeepL (Standalone):** Industry-standard neural machine translation (supports Free `:fx` and Pro keys).
-  - 🔴 **Gemini 3.5 Flash Lite (OpenRouter):** Ultra-fast, low-latency translation (`google/gemini-3.5-flash-lite`).
-  - 🔴 **Gemini 3.7 Flash (OpenRouter):** Next-gen multimodal translation (`google/gemini-3.7-flash`).
-  - 🟢 **OpenAI GPT-5.6 Luna (OpenRouter):** State-of-the-art language intelligence (`openai/gpt-5.6-luna`).
-  - 🔷 **DeepSeek V4 Flash (OpenRouter):** High efficiency translation (`deepseek/deepseek-v4-flash-0731`).
+- **Translation Modes:**
+  - **⚡ Direct Translation:** Fast, instant, clean translation wrapped in copyable `<code>...</code>` format without interruptions.
+  - **💡 Assistant Mode:** Analyzes message intent and nuances. If ambiguous or tone is unclear, asks clarifying questions in Ukrainian first before delivering a polished, perfectly styled translation.
+- **Independent Engine Configurations:**
+  - 🔵 **Translator Engine:** DeepL (Standalone), Gemini 3.5 Flash Lite, Gemini 3.7 Flash, GPT-5.6 Luna, DeepSeek V4 Flash.
+  - 🧠 **Assistant Engine:** Independent LLM selection for intent analysis (e.g., Gemini 3.7 Flash or GPT-5.6 Luna).
+- **Conversational Target Language Extraction:**
+  - Type any full sentence or utterance (e.g. *"хочу перекладати на португальську, європейський варіант"*), and **DeepSeek V4 Flash** instantly extracts the target language and maps it to official DeepL API codes.
 - **Enforced Non-Thinking Mode:**
   - All LLM models operate in pure translation mode without reasoning artifacts or thought delays (`reasoning: {"effort": "none"}`).
-- **Real-Time Streaming & One-Click Tap-to-Copy:**
-  - Fast token streaming with throttled updates.
-  - Final translation delivered inside `<code>...</code>` tags — **single click/tap copies immediately to clipboard**.
 - **Interactive In-Chat Settings GUI (`/settings`):**
-  - **Multilingual Target Language Input:** Type the target language in Ukrainian, English, or ISO code (e.g., `Португальська`, `Portuguese`, `pt`).
-  - **Switch Active Engine:** Pick between DeepL and any OpenRouter model.
-  - **Manage API Keys:** Set your standalone DeepL key and a single universal **OpenRouter API Key** (covers all 4 LLM models).
+  - Change target language, toggle translation modes, switch translator/assistant models, and manage API keys privately.
+
+---
+
+## 🔄 How to Update on Server
+
+To update the bot on your Ubuntu server to the latest version:
+
+```bash
+cd ~/tg_translation_DeepL_bot
+git pull origin main
+systemctl restart tg-translator.service
+systemctl status tg-translator.service --no-pager
+```
 
 ---
 
@@ -49,8 +59,8 @@ OpenRouter is a unified platform providing access to hundreds of AI models via a
 | Trigger | Description |
 | :--- | :--- |
 | `/start` | Launch the bot, view welcome instructions, and inspect current settings |
-| `/settings` or `⚙️ Settings` | Open interactive settings menu (target language, active engine, API keys) |
-| `/help` or `ℹ️ Help` | Display usage guide and supported engine details |
+| `/settings` or `⚙️ Settings` | Open interactive settings menu (target language, mode, engines, API keys) |
+| `/help` or `ℹ️ Help` | Display usage guide, modes, and engine details |
 | `[ Menu ]` Button | Native Telegram menu button in bottom-left corner |
 | `/assign_key <uid> <prov> <key>` | *(Admin only)* Assign specific API key to a user ID |
 | `/user_info <uid>` | *(Admin only)* Inspect user's current settings and custom keys |
@@ -71,58 +81,8 @@ python -m src.tools.manage_user set-key --user-id 123456789 --provider openroute
 # 3. Delete user's custom key
 python -m src.tools.manage_user delete-key --user-id 123456789 --provider openrouter
 
-# 4. Update user's settings (language / model)
+# 4. Update user's settings (language / model / mode)
 python -m src.tools.manage_user set-settings --user-id 123456789 --target-lang Portuguese --provider gemini_flash
-```
-
----
-
-## 🚀 Deployment Guide (Ubuntu Linux / Systemd)
-
-### 1. Clone Repository & Setup Virtual Environment
-
-```bash
-git clone https://github.com/your-username/tg_translation_DeepL_bot.git /opt/tg_translation_DeepL_bot
-cd /opt/tg_translation_DeepL_bot
-
-# Create Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 2. Configure Environment Variables
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-```ini
-# Required:
-BOT_TOKEN=8607012156:AAFfPNVHrFQ7SaCMJsae_0pW8tXKjaKrA28
-
-# Provider API Keys:
-DEEPL_API_KEY=7d501876-f8ec-481c-9795-7fc2396a7e22:fx
-OPENROUTER_API_KEY=sk-or-v1-your_openrouter_key_here
-
-# Settings
-DEFAULT_TARGET_LANGUAGE=English
-DEFAULT_PROVIDER=deepl
-DATABASE_PATH=data/translator.db
-LOG_LEVEL=INFO
-```
-
-### 3. Install & Start as Systemd Service
-
-```bash
-sudo cp systemd/tg-translator.service /etc/systemd/system/tg-translator.service
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now tg-translator.service
 ```
 
 ---

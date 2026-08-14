@@ -12,6 +12,8 @@ class UserSettings(BaseModel):
     user_id: int
     target_language: str = "English"
     selected_provider: str = "deepl"
+    assistant_mode: bool = False
+    assistant_provider: str = "gemini_flash"
 
 
 class DatabaseManager:
@@ -20,7 +22,7 @@ class DatabaseManager:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
     async def init_db(self) -> None:
-        """Initializes database schema."""
+        """Initializes database schema and handles migrations."""
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
@@ -28,6 +30,8 @@ class DatabaseManager:
                     user_id INTEGER PRIMARY KEY,
                     target_language TEXT NOT NULL DEFAULT 'English',
                     selected_provider TEXT NOT NULL DEFAULT 'deepl',
+                    assistant_mode INTEGER NOT NULL DEFAULT 0,
+                    assistant_provider TEXT NOT NULL DEFAULT 'gemini_flash',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
@@ -44,13 +48,25 @@ class DatabaseManager:
                 );
                 """
             )
+
+            # Safe column migrations if database already existed with older schema
+            try:
+                await db.execute("ALTER TABLE user_settings ADD COLUMN assistant_mode INTEGER NOT NULL DEFAULT 0;")
+            except Exception:
+                pass
+
+            try:
+                await db.execute("ALTER TABLE user_settings ADD COLUMN assistant_provider TEXT NOT NULL DEFAULT 'gemini_flash';")
+            except Exception:
+                pass
+
             await db.commit()
 
     async def get_user_settings(self, user_id: int) -> UserSettings:
         """Fetches user settings, creating defaults if not existing."""
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute(
-                "SELECT target_language, selected_provider FROM user_settings WHERE user_id = ?",
+                "SELECT target_language, selected_provider, assistant_mode, assistant_provider FROM user_settings WHERE user_id = ?",
                 (user_id,),
             ) as cursor:
                 row = await cursor.fetchone()
@@ -59,6 +75,8 @@ class DatabaseManager:
                         user_id=user_id,
                         target_language=row[0],
                         selected_provider=row[1],
+                        assistant_mode=bool(row[2]),
+                        assistant_provider=row[3] or "gemini_flash",
                     )
 
             # Insert default if not present
@@ -66,8 +84,8 @@ class DatabaseManager:
             default_provider = settings.default_provider
             await db.execute(
                 """
-                INSERT OR IGNORE INTO user_settings (user_id, target_language, selected_provider)
-                VALUES (?, ?, ?)
+                INSERT OR IGNORE INTO user_settings (user_id, target_language, selected_provider, assistant_mode, assistant_provider)
+                VALUES (?, ?, ?, 0, 'gemini_flash')
                 """,
                 (user_id, default_lang, default_provider),
             )
@@ -76,6 +94,8 @@ class DatabaseManager:
                 user_id=user_id,
                 target_language=default_lang,
                 selected_provider=default_provider,
+                assistant_mode=False,
+                assistant_provider="gemini_flash",
             )
 
     async def set_target_language(self, user_id: int, target_language: str) -> None:
@@ -108,6 +128,39 @@ class DatabaseManager:
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 (user_id, settings.default_target_language, provider),
+            )
+            await db.commit()
+
+    async def set_assistant_mode(self, user_id: int, enabled: bool) -> None:
+        """Toggles assistant mode on/off."""
+        val = 1 if enabled else 0
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO user_settings (user_id, assistant_mode, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    assistant_mode = excluded.assistant_mode,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (user_id, val),
+            )
+            await db.commit()
+
+    async def set_assistant_provider(self, user_id: int, provider: str) -> None:
+        """Sets active assistant model."""
+        if provider not in SUPPORTED_PROVIDERS:
+            raise ValueError(f"Unsupported provider: {provider}")
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                INSERT INTO user_settings (user_id, assistant_provider, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    assistant_provider = excluded.assistant_provider,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (user_id, provider),
             )
             await db.commit()
 
@@ -151,7 +204,7 @@ class DatabaseManager:
                 return row[0] if row else None
 
     async def get_all_user_api_keys(self, user_id: int) -> Dict[str, str]:
-        """Gets all custom API keys configured by the user."""
+        """Returns all configured API keys for a user."""
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute(
                 "SELECT provider, api_key FROM user_api_keys WHERE user_id = ?",

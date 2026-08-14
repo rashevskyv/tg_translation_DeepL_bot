@@ -3,12 +3,14 @@ from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
-from src.config import PROVIDERS_INFO, SUPPORTED_PROVIDERS
-from src.database.db import db_manager
+from src.config import settings, PROVIDERS_INFO, SUPPORTED_PROVIDERS
+from src.database.db import db_manager, VALID_KEY_PROVIDERS
 from src.services.language_normalizer import normalize_language
 from src.keyboards.inline import (
     get_settings_keyboard,
     get_providers_keyboard,
+    get_mode_selection_keyboard,
+    get_assistant_providers_keyboard,
     get_api_keys_menu_keyboard,
     get_provider_key_action_keyboard,
     get_cancel_keyboard,
@@ -21,6 +23,7 @@ settings_router = Router(name="settings")
 class SettingsStates(StatesGroup):
     waiting_for_target_language = State()
     waiting_for_api_key = State()
+    waiting_for_clarification = State()
 
 
 @settings_router.message(CommandStart())
@@ -29,6 +32,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     user_settings = await db_manager.get_user_settings(user_id)
     provider_title = PROVIDERS_INFO.get(user_settings.selected_provider, {}).get("name", user_settings.selected_provider)
+    mode_text = "💡 Assistant Mode" if user_settings.assistant_mode else "⚡ Direct Translation"
 
     welcome_text = (
         "👋 <b>Welcome to Translation Bot!</b>\n\n"
@@ -36,8 +40,9 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         "• Send text in <b>Ukrainian</b> ➔ Automatically translates into your chosen <b>Target Language</b>.\n"
         "• Send text in <b>Any other language</b> ➔ Automatically detects source language and translates into <b>Ukrainian</b>.\n\n"
         f"⚙️ <b>Current Settings:</b>\n"
+        f"• Mode: <code>{mode_text}</code>\n"
         f"• Target Language: <code>{user_settings.target_language}</code>\n"
-        f"• Active Model/Engine: <code>{provider_title}</code>\n\n"
+        f"• Translator Engine: <code>{provider_title}</code>\n\n"
         "Tap <b>⚙️ Settings</b> on the bottom keyboard or use /settings to configure options."
     )
     # First, send welcome with permanent reply keyboard attached
@@ -53,6 +58,8 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         reply_markup=get_settings_keyboard(
             user_settings.target_language,
             user_settings.selected_provider,
+            user_settings.assistant_mode,
+            user_settings.assistant_provider,
         ),
     )
 
@@ -66,10 +73,13 @@ async def cmd_help(message: Message, state: FSMContext) -> None:
         "<b>Navigation & Controls:</b>\n"
         "• Tap <b>⚙️ Settings</b> on the keyboard below (or send /settings)\n"
         "• Send any text to immediately receive a translation\n\n"
+        "<b>Translation Modes:</b>\n"
+        "• <b>⚡ Direct Translation:</b> Fast, instant, clean code translation without interruptions.\n"
+        "• <b>💡 Assistant Mode:</b> If your message is ambiguous or context is unclear, the assistant will ask clarification questions first, then give the exact translated result.\n\n"
         "<b>Supported Engines:</b>\n"
         "• <b>DeepL (Standalone):</b> High precision neural translation\n"
-        "• <b>Gemini 3.5 Flash Lite:</b> Ultra-fast non-thinking translation via OpenRouter\n"
-        "• <b>Gemini 3.7 Flash:</b> High intelligence non-thinking translation via OpenRouter\n"
+        "• <b>Gemini 3.5 Flash Lite:</b> Ultra-fast translation via OpenRouter\n"
+        "• <b>Gemini 3.7 Flash:</b> High intelligence translation via OpenRouter\n"
         "• <b>OpenAI GPT-5.6 Luna:</b> State-of-the-art GPT translation via OpenRouter\n"
         "• <b>DeepSeek V4 Flash:</b> High efficiency translation via OpenRouter\n\n"
         "<b>One-Click Copy:</b>\n"
@@ -94,6 +104,8 @@ async def cmd_settings(message: Message, state: FSMContext) -> None:
         reply_markup=get_settings_keyboard(
             user_settings.target_language,
             user_settings.selected_provider,
+            user_settings.assistant_mode,
+            user_settings.assistant_provider,
         ),
     )
 
@@ -113,6 +125,8 @@ async def callback_open_main_settings(query: CallbackQuery, state: FSMContext) -
         reply_markup=get_settings_keyboard(
             user_settings.target_language,
             user_settings.selected_provider,
+            user_settings.assistant_mode,
+            user_settings.assistant_provider,
         ),
     )
     await query.answer()
@@ -132,8 +146,8 @@ async def callback_set_target_language(query: CallbackQuery, state: FSMContext) 
     await state.set_state(SettingsStates.waiting_for_target_language)
     prompt_text = (
         "🌐 <b>Set Target Translation Language</b>\n\n"
-        "Please type the name or code of the language you want Ukrainian text to be translated into "
-        "(e.g., <code>Португальська</code>, <code>English</code>, <code>German</code>, <code>Polish</code>, <code>Spanish</code>, <code>French</code>, <code>Japanese</code>, <code>pl</code>, <code>de</code>, <code>es</code>):"
+        "Please type the name or code of the language (or describe your request):\n"
+        "<i>(e.g., 'Португальська', 'хочу німецьку', 'American English', 'pl', 'de')</i>"
     )
     await query.message.edit_text(
         prompt_text,
@@ -154,10 +168,7 @@ async def process_target_language_input(message: Message, state: FSMContext) -> 
         return
 
     user_id = message.from_user.id
-    # Get user's custom OpenRouter / OpenAI key or system key for resolving complex utterances
     openrouter_key = await db_manager.get_effective_api_key(user_id, "openrouter")
-    
-    # Normalize language via comprehensive dictionary + DeepSeek V4 Flash resolution
     lang_info = await normalize_language(raw_lang, openrouter_api_key=openrouter_key)
     
     await db_manager.set_target_language(user_id, lang_info.canonical_name)
@@ -179,11 +190,95 @@ async def process_target_language_input(message: Message, state: FSMContext) -> 
         reply_markup=get_settings_keyboard(
             user_settings.target_language,
             user_settings.selected_provider,
+            user_settings.assistant_mode,
+            user_settings.assistant_provider,
         ),
     )
 
 
-# --- Model / Provider Selection ---
+# --- Mode Selection (Direct vs Assistant) ---
+
+@settings_router.callback_query(F.data == "toggle_mode_menu")
+async def callback_toggle_mode_menu(query: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    user_id = query.from_user.id
+    user_settings = await db_manager.get_user_settings(user_id)
+    text = (
+        "🔄 <b>Select Translation Mode</b>\n\n"
+        "• <b>⚡ Direct Translation:</b> Fast, instant translation into code block without interruption.\n"
+        "• <b>💡 Assistant Mode:</b> The bot analyzes intent. If meaning or tone is ambiguous, it clarifies first, then outputs a high-accuracy styled translation."
+    )
+    await query.message.edit_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=get_mode_selection_keyboard(user_settings.assistant_mode),
+    )
+    await query.answer()
+
+
+@settings_router.callback_query(F.data.startswith("set_mode:"))
+async def callback_set_mode(query: CallbackQuery, state: FSMContext) -> None:
+    mode = query.data.split(":", 1)[1]
+    is_assistant = (mode == "assistant")
+    user_id = query.from_user.id
+    await db_manager.set_assistant_mode(user_id, is_assistant)
+    user_settings = await db_manager.get_user_settings(user_id)
+
+    mode_title = "💡 Assistant Mode" if is_assistant else "⚡ Direct Translation"
+    await query.message.edit_text(
+        f"✅ Translation mode updated to <b>{mode_title}</b>.",
+        parse_mode="HTML",
+        reply_markup=get_settings_keyboard(
+            user_settings.target_language,
+            user_settings.selected_provider,
+            user_settings.assistant_mode,
+            user_settings.assistant_provider,
+        ),
+    )
+    await query.answer()
+
+
+# --- Assistant Model Selection ---
+
+@settings_router.callback_query(F.data == "select_assistant_provider_menu")
+async def callback_select_assistant_provider_menu(query: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    user_id = query.from_user.id
+    user_settings = await db_manager.get_user_settings(user_id)
+    text = (
+        "🧠 <b>Select Assistant Model</b>\n\n"
+        "Choose which LLM will perform intent analysis and clarification questions:"
+    )
+    await query.message.edit_text(
+        text,
+        parse_mode="HTML",
+        reply_markup=get_assistant_providers_keyboard(user_settings.assistant_provider),
+    )
+    await query.answer()
+
+
+@settings_router.callback_query(F.data.startswith("choose_assistant_provider:"))
+async def callback_choose_assistant_provider(query: CallbackQuery, state: FSMContext) -> None:
+    provider = query.data.split(":", 1)[1]
+    user_id = query.from_user.id
+    await db_manager.set_assistant_provider(user_id, provider)
+    user_settings = await db_manager.get_user_settings(user_id)
+    provider_title = PROVIDERS_INFO.get(provider, {}).get("name", provider)
+
+    await query.message.edit_text(
+        f"✅ Assistant Engine set to <b>{provider_title}</b>.",
+        parse_mode="HTML",
+        reply_markup=get_settings_keyboard(
+            user_settings.target_language,
+            user_settings.selected_provider,
+            user_settings.assistant_mode,
+            user_settings.assistant_provider,
+        ),
+    )
+    await query.answer()
+
+
+# --- Translator Engine Selection ---
 
 @settings_router.callback_query(F.data == "select_provider_menu")
 async def callback_select_provider_menu(query: CallbackQuery, state: FSMContext) -> None:
@@ -214,12 +309,14 @@ async def callback_choose_provider(query: CallbackQuery, state: FSMContext) -> N
 
         key_req = "DeepL API Key" if provider == "deepl" else "OpenRouter API Key"
         await query.message.edit_text(
-            f"✅ Active engine set to <b>{provider_title}</b>.\n\n"
+            f"✅ Translator engine set to <b>{provider_title}</b>.\n\n"
             f"Note: Ensure you have an API key configured for {key_req} via 'Manage API Keys' or server environment.",
             parse_mode="HTML",
             reply_markup=get_settings_keyboard(
                 user_settings.target_language,
                 user_settings.selected_provider,
+                user_settings.assistant_mode,
+                user_settings.assistant_provider,
             ),
         )
     await query.answer()
@@ -363,9 +460,8 @@ def _is_admin(user_id: int) -> bool:
 @settings_router.message(Command("assign_key"))
 async def cmd_assign_key(message: Message) -> None:
     if not _is_admin(message.from_user.id):
-        return  # Silently ignore non-admins
+        return
 
-    # Automatically delete command message to protect key
     try:
         await message.delete()
     except Exception:
@@ -388,7 +484,6 @@ async def cmd_assign_key(message: Message) -> None:
     provider = args[1].lower()
     api_key = args[2].strip()
 
-    from src.database.db import VALID_KEY_PROVIDERS
     if provider not in VALID_KEY_PROVIDERS:
         await message.answer(f"⚠️ Invalid provider. Supported: {', '.join(VALID_KEY_PROVIDERS)}")
         return
@@ -422,11 +517,13 @@ async def cmd_user_info(message: Message) -> None:
     custom_keys = await db_manager.get_all_user_api_keys(target_uid)
     keys_str = "\n".join(f"• <b>{k}</b>: <code>{v[:4]}...{v[-4:]}</code>" for k, v in custom_keys.items()) if custom_keys else "<i>None set (using fallback)</i>"
 
+    mode_text = "💡 Assistant Mode" if user_settings.assistant_mode else "⚡ Direct Translation"
     await message.answer(
         f"👤 <b>User Info (ID: <code>{target_uid}</code>):</b>\n\n"
+        f"• Mode: <code>{mode_text}</code>\n"
         f"• Target Language: <code>{user_settings.target_language}</code>\n"
-        f"• Active Provider: <code>{user_settings.selected_provider}</code>\n\n"
+        f"• Translator Provider: <code>{user_settings.selected_provider}</code>\n"
+        f"• Assistant Provider: <code>{user_settings.assistant_provider}</code>\n\n"
         f"<b>Configured Custom Keys:</b>\n{keys_str}",
         parse_mode="HTML",
     )
-
