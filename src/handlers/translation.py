@@ -43,10 +43,13 @@ async def _execute_translation(
     target_lang: str,
     provider: BaseTranslationProvider,
     api_key: str,
+    is_assistant_mode: bool = False,
 ) -> None:
-    """Core translation pipeline executing translation via chosen translator engine."""
+    """Core translation pipeline executing translation via chosen translator engine with back-translation verification in assistant mode."""
     provider_title = PROVIDERS_INFO.get(provider.name, {}).get("name", provider.name)
     direction_info = f"<i>({source_lang} ➔ {target_lang} via {provider_title})</i>"
+
+    translated_text = ""
 
     # DeepL or Non-streaming mode
     if not provider.supports_streaming:
@@ -74,72 +77,96 @@ async def _execute_translation(
         except Exception:
             pass
 
-        final_html = f"<code>{html.escape(translated_text)}</code>"
-        await message.reply(final_html, parse_mode="HTML")
-        return
+    else:
+        # Streaming mode for LLM providers
+        stream_msg = await message.reply(
+            f"⏳ <i>Translating stream via {provider_title}...</i>",
+            parse_mode="HTML",
+        )
 
-    # Streaming mode for LLM providers
-    stream_msg = await message.reply(
-        f"⏳ <i>Translating stream via {provider_title}...</i>",
-        parse_mode="HTML",
-    )
+        accumulated_text = ""
+        last_update_time = time.time()
+        update_interval = settings.stream_chunk_interval
 
-    accumulated_text = ""
-    last_update_time = time.time()
-    update_interval = settings.stream_chunk_interval
-
-    try:
-        async for chunk in provider.translate_stream(
-            text=text_to_translate,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            api_key=api_key,
-        ):
-            accumulated_text += chunk
-            current_time = time.time()
-
-            if current_time - last_update_time >= update_interval and accumulated_text.strip():
-                try:
-                    display_chunk = accumulated_text[:4000]
-                    await stream_msg.edit_text(
-                        f"<i>Translating ({source_lang} ➔ {target_lang})...</i>\n\n{html.escape(display_chunk)}",
-                        parse_mode="HTML",
-                    )
-                    last_update_time = current_time
-                except TelegramRetryAfter as retry_err:
-                    await asyncio.sleep(retry_err.retry_after)
-                except TelegramBadRequest:
-                    pass
-
-        if not accumulated_text.strip():
-            accumulated_text = await provider.translate(
+        try:
+            async for chunk in provider.translate_stream(
                 text=text_to_translate,
                 source_lang=source_lang,
                 target_lang=target_lang,
                 api_key=api_key,
-            )
+            ):
+                accumulated_text += chunk
+                current_time = time.time()
 
+                if current_time - last_update_time >= update_interval and accumulated_text.strip():
+                    try:
+                        display_chunk = accumulated_text[:4000]
+                        await stream_msg.edit_text(
+                            f"<i>Translating ({source_lang} ➔ {target_lang})...</i>\n\n{html.escape(display_chunk)}",
+                            parse_mode="HTML",
+                        )
+                        last_update_time = current_time
+                    except TelegramRetryAfter as retry_err:
+                        await asyncio.sleep(retry_err.retry_after)
+                    except TelegramBadRequest:
+                        pass
+
+            if not accumulated_text.strip():
+                accumulated_text = await provider.translate(
+                    text=text_to_translate,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    api_key=api_key,
+                )
+
+            translated_text = accumulated_text
+
+            try:
+                await stream_msg.delete()
+            except Exception:
+                pass
+
+        except Exception as e:
+            try:
+                await stream_msg.edit_text(
+                    f"❌ <b>Translation failed:</b>\n{html.escape(str(e))}",
+                    parse_mode="HTML",
+                    reply_markup=_get_error_settings_keyboard(),
+                )
+            except Exception:
+                await message.reply(
+                    f"❌ <b>Translation failed:</b>\n{html.escape(str(e))}",
+                    parse_mode="HTML",
+                    reply_markup=_get_error_settings_keyboard(),
+                )
+            return
+
+    # In Assistant Mode: automatically perform back-translation verification into Ukrainian
+    if is_assistant_mode and source_lang == "Ukrainian" and target_lang != "Ukrainian":
+        back_translation = None
         try:
-            await stream_msg.delete()
+            back_translation = await provider.translate(
+                text=translated_text,
+                source_lang=target_lang,
+                target_lang="Ukrainian",
+                api_key=api_key,
+            )
         except Exception:
             pass
 
-        final_html = f"<code>{html.escape(accumulated_text)}</code>"
-        await message.reply(final_html, parse_mode="HTML")
+        if back_translation:
+            final_html = (
+                f"<code>{html.escape(translated_text)}</code>\n\n"
+                f"🔍 <b>Зворотний переклад (верифікація):</b>\n"
+                f"<i>{html.escape(back_translation)}</i>"
+            )
+        else:
+            final_html = f"<code>{html.escape(translated_text)}</code>"
+    else:
+        # Pure clean translation
+        final_html = f"<code>{html.escape(translated_text)}</code>"
 
-    except Exception as e:
-        try:
-            await stream_msg.edit_text(
-                f"❌ <b>Translation failed:</b>\n{html.escape(str(e))}",
-                parse_mode="HTML",
-                reply_markup=_get_error_settings_keyboard(),
-            )
-        except Exception:
-            await message.reply(
-                f"❌ <b>Translation failed:</b>\n{html.escape(str(e))}",
-                parse_mode="HTML",
-                reply_markup=_get_error_settings_keyboard(),
-            )
+    await message.reply(final_html, parse_mode="HTML")
 
 
 @translation_router.message(Command("reset"))
@@ -175,12 +202,13 @@ async def callback_force_translate_draft(query: CallbackQuery, state: FSMContext
     await query.message.edit_reply_markup(reply_markup=None)
     await query.answer()
     await _execute_translation(
-        query.message,
-        last_user_text,
-        "Ukrainian",
-        user_settings.target_language,
-        provider,
-        api_key,
+        message=query.message,
+        text_to_translate=last_user_text,
+        source_lang="Ukrainian",
+        target_lang=user_settings.target_language,
+        provider=provider,
+        api_key=api_key,
+        is_assistant_mode=True,
     )
 
 
@@ -216,7 +244,7 @@ async def handle_translation_text(message: Message, state: FSMContext) -> None:
         await message.reply(f"⚠️ Error preparing translation: {html.escape(str(e))}")
         return
 
-    # --- Assistant Mode with Persistent 30-message / 2-hour Memory ---
+    # --- Assistant Mode with Persistent Memory ---
     if user_settings.assistant_mode:
         assist_provider = user_settings.assistant_provider
         assist_key = await db_manager.get_effective_api_key(user_id, assist_provider)
@@ -255,7 +283,7 @@ async def handle_translation_text(message: Message, state: FSMContext) -> None:
                 return
 
             elif turn_result.status == "ready":
-                # Approved text -> dispatch to chosen translator engine
+                # Approved text -> dispatch to chosen translator engine with back-translation verification
                 final_source_text = turn_result.approved_source_text or input_text
                 await _execute_translation(
                     message=message,
@@ -264,6 +292,7 @@ async def handle_translation_text(message: Message, state: FSMContext) -> None:
                     target_lang=target_lang,
                     provider=provider,
                     api_key=api_key,
+                    is_assistant_mode=True,
                 )
                 return
 
@@ -275,4 +304,5 @@ async def handle_translation_text(message: Message, state: FSMContext) -> None:
         target_lang=target_lang,
         provider=provider,
         api_key=api_key,
+        is_assistant_mode=False,
     )

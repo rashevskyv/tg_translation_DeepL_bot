@@ -7,16 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.1] - 2026-08-14
+
+### Changed
+- **Strict Intent vs Translation Classification (`src/services/assistant.py`):**
+  - Messages with action verbs ("напиши...", "склади...", "допоможи...", "з підйобом...") and any ambiguous requests are strictly classified as assistant instructions rather than literal translation inputs.
+  - Assistant provides creative tailored options in Ukrainian with style explanations before dispatching to translation.
+- **Automatic Back-Translation Verification in Assistant Mode (`src/handlers/translation.py`):**
+  - In Assistant Mode, after translating approved text into the target foreign language, the bot automatically computes and appends a Ukrainian back-translation (`🔍 Зворотний переклад (верифікація)`), allowing the user to verify the exact rendered meaning before sending it.
+
+---
+
 ## [0.4.0] - 2026-08-14
 
 ### Added
-- **Persistent Assistant Conversation Memory (`src/database/db.py`):**
-  - Storing conversation history in `assistant_messages` table.
-  - Automatically retains up to **30 recent messages** within a **2-hour sliding window**, pruning older context automatically.
-  - Added `/reset`, `/clear` commands and `[ 🗑️ Reset Memory ]` inline button.
-- **Collaborative Writing & Tone Styling (`src/services/assistant.py`):**
-  - Users can ask the Assistant to draft text, adjust emotional coloring, rewrite messages politely, formally, sarcastically, or persuasively.
-  - Full multi-turn iteration until the user explicitly approves, then seamlessly sends the agreed-upon text to the selected Translator Engine.
+- Persistent Assistant Conversation Memory (30 messages / 2 hours).
+- Collaborative copywriting and emotional tone styling.
 
 ---
 
@@ -24,17 +30,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Multi-turn assistant intent clarification dialogue and separation of assistant vs translation prompts.
-
----
-
-## [0.3.1] - 2026-08-14
-
-### Fixed
-- Colloquial Ukrainian and slang detection heuristics in `src/services/detector.py`.
-
----
-
-## [0.3.0] - 2026-08-14
-
-### Added
-- Intelligent Assistant Mode with independent model selection.
