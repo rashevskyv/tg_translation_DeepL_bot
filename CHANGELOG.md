@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.4] - 2026-08-14
+
+### Fixed
+- **Aiogram 3 Filter Operator Error:**
+  - Resolved `TypeError: unsupported operand type(s) for |: 'Command' and 'bool'` by splitting combined filters into separate handler decorators for `/settings`, `/help`, and their corresponding button texts.
+
+---
+
 ## [0.1.3] - 2026-08-14
 
 ### Changed
@@ -37,17 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Intelligent Multilingual Normalizer (`src/services/language_normalizer.py`):**
-  - High-coverage local dictionary supporting Ukrainian language names (`Португальська`, `Німецька`, `Іспанська`, `Польська`, `Французька`, etc.) mapped directly to standardized English canonical names and official DeepL codes (`PT-PT`, `DE`, `ES`, `PL`, `FR`, etc.).
-  - AI-assisted language resolution fallback using **OpenAI API** with structured JSON output for arbitrary or exotic language queries in any script.
-- **Enhanced Test Coverage:**
-  - Added unit test suite `tests/test_normalizer.py` validating Ukrainian language queries, ISO codes, and DeepL mapping.
-
-### Fixed
-- **DeepL 400 Bad Request Error (`target_lang not supported`):**
-  - Resolved invalid slicing of Cyrillic text when mapping user-entered language names to DeepL target codes.
-  - Added informative validation error suggesting switching to LLM engines (OpenAI, Gemini, DeepSeek, Qwen) when a language unsupported by DeepL is selected.
-- **Settings UI Polish:**
-  - Settings now cleanly displays the canonical English language title alongside the official DeepL code upon setting target language.
+  - High-coverage local dictionary supporting Ukrainian language names mapped directly to standardized English canonical names and official DeepL codes (`PT-PT`, `DE`, `ES`, `PL`, `FR`, etc.).
+  - AI-assisted language resolution fallback using **OpenAI API**.
 
 ---
 
@@ -58,7 +57,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Integrated **DeepL API**, **OpenAI API** (`gpt-4o-mini`), **Google Gemini API** (`gemini-2.0-flash`), **Qwen API** (`qwen-plus`), and **DeepSeek API** (`deepseek-chat`).
 - **Smart Bidirectional Translation:**
   - Automated language detection distinguishing Ukrainian from foreign languages.
-- **Streaming & One-Click Copy UX:**
-  - Real-time token streaming with throttled updates (~0.4s).
-- **Interactive In-Chat Settings GUI (`/settings`)** and SQLite storage.
-- **Systemd Service** and test suite.

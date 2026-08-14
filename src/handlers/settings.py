@@ -57,7 +57,8 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     )
 
 
-@settings_router.message(Command("help") | F.text.in_({"ℹ️ Help", "ℹ️ Допомога", "Help", "Допомога"}))
+@settings_router.message(Command("help"))
+@settings_router.message(F.text.in_({"ℹ️ Help", "ℹ️ Допомога", "Help", "Допомога"}))
 async def cmd_help(message: Message, state: FSMContext) -> None:
     await state.clear()
     help_text = (
@@ -77,7 +78,8 @@ async def cmd_help(message: Message, state: FSMContext) -> None:
     await message.answer(help_text, parse_mode="HTML", reply_markup=get_main_reply_keyboard())
 
 
-@settings_router.message(Command("settings") | F.text.in_({"⚙️ Settings", "⚙️ Налаштування", "Settings", "Налаштування"}))
+@settings_router.message(Command("settings"))
+@settings_router.message(F.text.in_({"⚙️ Settings", "⚙️ Налаштування", "Settings", "Налаштування"}))
 async def cmd_settings(message: Message, state: FSMContext) -> None:
     await state.clear()
     user_id = message.from_user.id

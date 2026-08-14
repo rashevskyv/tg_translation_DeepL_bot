@@ -1,14 +1,19 @@
 # Журнал змін (Walkthrough)
 
-## Версія: v0.1.3 (Оновлено формат нативного Tap-to-Copy копіювання `<code>`)
+## Версія: v0.1.4 (Виправлення фільтрації aiogram 3 для команд та кнопок)
 
 ### Зміни:
-1. **Виправлення автоматичного копіювання при кліку (Tap to Copy):**
-   - Замінено блоковий тег `<pre><code>...</code></pre>` на інлайн-моноширинний тег `<code>...</code>` у [src/handlers/translation.py](file:///d:/git/dev/tg_translation_DeepL_bot/src/handlers/translation.py).
-   - У Telegram-клієнтах (iOS, Android, Desktop) текст всередині тегів `<code>...</code>` підтримує нативну поведінку **Tap to Copy** — один клік/тап по будь-якій частині тексту автоматично копіює весь переклад у буфер обміну та показує спливаюче сповіщення «Скопійовано в буфер обміну».
+1. **Виправлення помилки фільтрів aiogram (`TypeError: unsupported operand type(s) for |: 'Command' and 'bool'`):**
+   - У [src/handlers/settings.py](file:///d:/git/dev/tg_translation_DeepL_bot/src/handlers/settings.py) замінено некоректне об'єднання `Command(...) | F.text...` на окремі декоратори `@settings_router.message(Command(...))` та `@settings_router.message(F.text.in_(...))`.
+   - Тепер команди `/settings`, `/help`, а також натискання кнопок `⚙️ Settings`, `ℹ️ Help` на клавіатурі обробляються стабільно без жодних виключень.
 
 2. **Тестування:**
-   - Всі 22 тести успішно проходять у паралельному режимі (`pytest -n auto`).
+   - Всі 22 тести успішно пройшли паралельно (`pytest -n auto`).
+
+---
+
+## Версія: v0.1.3 (Оновлено формат нативного Tap-to-Copy копіювання `<code>`)
+- Замінено `<pre><code>...</code></pre>` на інлайн-моноширинний тег `<code>...</code>` у `src/handlers/translation.py`.
 
 ---
 
@@ -27,4 +32,5 @@
 ## Версія: v0.1.0 (Ініціалізація та перший реліз)
 - Мультипровайдерність (DeepL, OpenAI, Gemini, Qwen, DeepSeek).
 - Двонаправлений переклад (UA $\leftrightarrow$ Foreign).
+- Стрімінг та One-Click копіювання в тегах коду.
 - Локальне SQLite сховище.
