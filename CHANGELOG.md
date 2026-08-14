@@ -7,28 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.2] - 2026-08-14
+
+### Changed
+- **Multi-Turn Assistant Intent Clarification Dialogue (`src/services/assistant.py`, `src/handlers/translation.py`):**
+  - Assistant model now conducts a full multi-turn conversational dialogue with the user until the exact meaning and nuances are mutually agreed upon.
+  - Separate system prompt for Assistant (dialogue, nuance extraction, agreement) and Translation Engine (pure translation).
+  - Once agreed (or if unambiguous immediately), the Assistant outputs the synthesized approved source text and passes it to the user's selected Translator Engine (DeepL or configured LLM) for final translation.
+  - Added interactive buttons `[ ⚡ Translate As Is ]` and `[ ❌ Cancel ]` during clarification sessions.
+
+---
+
 ## [0.3.1] - 2026-08-14
 
 ### Fixed
-- **Colloquial Ukrainian & Slang Language Detection (`src/services/detector.py`):**
-  - Fixed an issue where short Ukrainian phrases and slang without unique letters (like *"шо ти, голова"*) were misclassified by `langdetect` as Russian, causing false backwards translations into Ukrainian.
-  - Added strict Russian letter filtering (`ы, э, ъ, ё`) and expanded Ukrainian colloquial marker heuristics.
+- Colloquial Ukrainian and slang detection heuristics in `src/services/detector.py`.
 
 ---
 
 ## [0.3.0] - 2026-08-14
 
 ### Added
-- **Intelligent Assistant Mode (`src/services/assistant.py`):**
-  - Added dual-mode translation capability (`Direct Translation` vs `Assistant Mode`).
-  - Context and intent clarification dialogues before translating ambiguous messages.
-- **Independent Assistant Engine Selection:**
-  - Independent model configurations for translation vs assistant.
-
----
-
-## [0.2.3] - 2026-08-14
-
-### Changed
-- Clean translation output without persistent inline buttons.
-- Conversational target language resolution using DeepSeek V4 Flash.
+- Intelligent Assistant Mode with independent model selection.
