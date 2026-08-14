@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-08-14
+
+### Changed
+- **Native One-Click Copy (`<code>` tag format):**
+  - Replaced `<pre><code>` blocks with `<code>` formatting in `src/handlers/translation.py`.
+  - In Telegram clients (Android, iOS, Desktop), clicking or tapping anywhere inside `<code>...</code>` triggers native **Tap-to-Copy** with an instant clipboard notification.
+
+---
+
 ## [0.1.2] - 2026-08-14
 
 ### Added
@@ -51,6 +60,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automated language detection distinguishing Ukrainian from foreign languages.
 - **Streaming & One-Click Copy UX:**
   - Real-time token streaming with throttled updates (~0.4s).
-  - Final translation delivered in `<pre><code>` block for one-click copying.
 - **Interactive In-Chat Settings GUI (`/settings`)** and SQLite storage.
 - **Systemd Service** and test suite.

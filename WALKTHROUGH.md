@@ -1,36 +1,30 @@
 # Журнал змін (Walkthrough)
 
-## Версія: v0.1.2 (Додано постійну кнопку налаштувань ⚙️ Settings та меню команд)
+## Версія: v0.1.3 (Оновлено формат нативного Tap-to-Copy копіювання `<code>`)
 
 ### Зміни:
-1. **Постійна нижня клавіатура (Reply Keyboard):**
-   - Створено `src/keyboards/reply.py` з кнопками `[⚙️ Settings]` та `[ℹ️ Help]`. Клавіатура закріплена під полем введення повідомлення (`is_persistent=True`, `resize_keyboard=True`).
-   - Натискання на кнопку `⚙️ Settings` (або `⚙️ Налаштування`) миттєво відкриває інтерфейс налаштувань.
-   - Натискання на `ℹ️ Help` відкриває довідку.
+1. **Виправлення автоматичного копіювання при кліку (Tap to Copy):**
+   - Замінено блоковий тег `<pre><code>...</code></pre>` на інлайн-моноширинний тег `<code>...</code>` у [src/handlers/translation.py](file:///d:/git/dev/tg_translation_DeepL_bot/src/handlers/translation.py).
+   - У Telegram-клієнтах (iOS, Android, Desktop) текст всередині тегів `<code>...</code>` підтримує нативну поведінку **Tap to Copy** — один клік/тап по будь-якій частині тексту автоматично копіює весь переклад у буфер обміну та показує спливаюче сповіщення «Скопійовано в буфер обміну».
 
-2. **Нативне меню команд Telegram (Menu Button):**
-   - У `src/main.py` додано виклик `bot.set_my_commands()` для реєстрації системного меню:
-     - `/settings` - ⚙️ Open settings (Languages, Engines, API keys)
-     - `/start` - 🚀 Start bot & view current preferences
-     - `/help` - 📖 Help & Supported providers guide
-   - Завдяки цьому в Telegram-клієнті з'являється офіційна синя кнопка «Menu / Меню» ліворуч від поля вводу.
+2. **Тестування:**
+   - Всі 22 тести успішно проходять у паралельному режимі (`pytest -n auto`).
 
-3. **Тестування:**
-   - Додано `tests/test_keyboards.py`.
-   - Всі 22 тести успішно пройшли паралельно (`pytest -n auto`).
+---
+
+## Версія: v0.1.2 (Додано постійну кнопку налаштувань ⚙️ Settings та меню команд)
+- Постійна нижня клавіатура `[⚙️ Settings]` та `[ℹ️ Help]` (`src/keyboards/reply.py`).
+- Реєстрація системного меню команд Telegram (`bot.set_my_commands`).
 
 ---
 
 ## Версія: v0.1.1 (Виправлення розпізнавання мов та інтеграція нормалізатора DeepL/OpenAI)
-
-### Зміни:
-- Інтелектуальний нормалізатор мов (`src/services/language_normalizer.py`) для обробки українських назв мов («Португальська» $\rightarrow$ «Portuguese» / `PT-PT`).
+- Інтелектуальний нормалізатор мов (`src/services/language_normalizer.py`).
 - Запобігання помилці DeepL 400 Bad Request.
 
 ---
 
 ## Версія: v0.1.0 (Ініціалізація та перший реліз)
-- Підтримка 5 провайдерів (DeepL, OpenAI, Gemini, Qwen, DeepSeek).
-- Автоматичний переклад (UA $\leftrightarrow$ Foreign).
-- Стрімінг та One-Click копіювання в тегах коду.
+- Мультипровайдерність (DeepL, OpenAI, Gemini, Qwen, DeepSeek).
+- Двонаправлений переклад (UA $\leftrightarrow$ Foreign).
 - Локальне SQLite сховище.

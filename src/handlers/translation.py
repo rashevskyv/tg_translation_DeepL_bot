@@ -71,7 +71,7 @@ async def handle_translation_text(message: Message) -> None:
         except Exception:
             pass
 
-        final_html = f"<pre><code>{html.escape(translated_text)}</code></pre>"
+        final_html = f"<code>{html.escape(translated_text)}</code>"
         await message.reply(final_html, parse_mode="HTML")
         return
 
@@ -124,7 +124,7 @@ async def handle_translation_text(message: Message) -> None:
         except Exception:
             pass
 
-        final_html = f"<pre><code>{html.escape(accumulated_text)}</code></pre>"
+        final_html = f"<code>{html.escape(accumulated_text)}</code>"
         await message.reply(final_html, parse_mode="HTML")
 
     except Exception as e:
