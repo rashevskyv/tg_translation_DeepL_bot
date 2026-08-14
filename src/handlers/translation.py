@@ -18,6 +18,15 @@ def _get_error_settings_keyboard() -> InlineKeyboardMarkup:
     )
 
 
+def get_translation_actions_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⚙️ Settings", callback_data="open_main_settings")]
+        ]
+    )
+
+
+
 @translation_router.message(F.text & ~F.text.startswith("/"))
 async def handle_translation_text(message: Message) -> None:
     user_id = message.from_user.id
@@ -72,7 +81,11 @@ async def handle_translation_text(message: Message) -> None:
             pass
 
         final_html = f"<code>{html.escape(translated_text)}</code>"
-        await message.reply(final_html, parse_mode="HTML")
+        await message.reply(
+            final_html,
+            parse_mode="HTML",
+            reply_markup=get_translation_actions_keyboard(),
+        )
         return
 
     # Streaming mode for LLM providers (OpenAI, Gemini, Qwen, DeepSeek)
@@ -125,7 +138,11 @@ async def handle_translation_text(message: Message) -> None:
             pass
 
         final_html = f"<code>{html.escape(accumulated_text)}</code>"
-        await message.reply(final_html, parse_mode="HTML")
+        await message.reply(
+            final_html,
+            parse_mode="HTML",
+            reply_markup=get_translation_actions_keyboard(),
+        )
 
     except Exception as e:
         try:

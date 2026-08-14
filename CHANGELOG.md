@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.5] - 2026-08-14
+
+### Added
+- **Inline Settings Button on Translation Replies (`src/handlers/translation.py`):**
+  - Attached a prominent `[ ⚙️ Settings ]` inline button directly beneath every translated message.
+  - Tapping this button immediately reveals the interactive settings GUI (Target language, Active engine, API keys) directly under the translated message.
+
+---
+
 ## [0.1.4] - 2026-08-14
 
 ### Fixed
@@ -29,15 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Persistent Bottom Settings Keyboard (`src/keyboards/reply.py`):**
   - Added persistent, auto-resizing bottom reply keyboard with `[ ⚙️ Settings ]` and `[ ℹ️ Help ]` buttons permanently available below the message input field.
-  - Tapping `⚙️ Settings` instantly opens the interactive inline settings menu.
 - **Telegram Native Command Menu Registration (`src/main.py`):**
-  - Registered bot commands with Telegram Bot API (`bot.set_my_commands`):
-    - `/settings` - ⚙️ Open settings (Languages, Engines, API keys)
-    - `/start` - 🚀 Start bot & view current preferences
-    - `/help` - 📖 Help & Supported providers guide
-  - Displays the native blue `[ Menu ]` button on mobile and desktop Telegram clients.
-- **Test Suite Expansion:**
-  - Added `tests/test_keyboards.py` for reply and inline keyboard validation (22 parallel tests passing).
+  - Registered bot commands with Telegram Bot API (`bot.set_my_commands`).
 
 ---
 
@@ -45,8 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Intelligent Multilingual Normalizer (`src/services/language_normalizer.py`):**
-  - High-coverage local dictionary supporting Ukrainian language names mapped directly to standardized English canonical names and official DeepL codes (`PT-PT`, `DE`, `ES`, `PL`, `FR`, etc.).
-  - AI-assisted language resolution fallback using **OpenAI API**.
+  - High-coverage local dictionary supporting Ukrainian language names mapped directly to standardized English canonical names and official DeepL codes.
 
 ---
 
@@ -55,5 +56,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Multi-Engine Translation Architecture:**
   - Integrated **DeepL API**, **OpenAI API** (`gpt-4o-mini`), **Google Gemini API** (`gemini-2.0-flash`), **Qwen API** (`qwen-plus`), and **DeepSeek API** (`deepseek-chat`).
-- **Smart Bidirectional Translation:**
-  - Automated language detection distinguishing Ukrainian from foreign languages.
