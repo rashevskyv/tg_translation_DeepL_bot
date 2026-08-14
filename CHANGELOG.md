@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.3] - 2026-08-14
+
+### Changed
+- **Clean Translation Output (`src/handlers/translation.py`):**
+  - Removed persistent inline buttons attached to translation replies. Output messages now contain strictly the copyable translation in `<code>` formatting.
+  - Settings are summoned on-demand via the Telegram command menu, persistent reply keyboard, or `/settings`.
+- **DeepSeek V4 Conversational Target Language Resolution (`src/services/language_normalizer.py`):**
+  - Upgraded target language normalization to process any conversational sentence or utterance (e.g., *"хочу перекладати на португальську, європейський варіант"*) using **DeepSeek V4 Flash** (`deepseek/deepseek-v4-flash-0731` via OpenRouter).
+  - Automatically resolves extracted languages to official DeepL canonical names and target codes (e.g. `Portuguese` $\rightarrow$ `PT-PT`).
+
+---
+
 ## [0.2.2] - 2026-08-14
 
 ### Added
-- **Automated Root Deployment Script (`scripts/deploy.sh`):**
-  - Instant One-Liner deployment for Ubuntu Server in user home directory (`~/tg_translation_DeepL_bot`).
-  - Automatic `systemd` unit setup, Python virtual environment creation, configuration, and pre-seeding of admin keys.
+- **Automated Root Deployment Script (`scripts/deploy.sh` & `scripts/install.sh`):**
+  - Fast installation for Ubuntu Server in user home directory (`~/tg_translation_DeepL_bot`).
 
 ---
 

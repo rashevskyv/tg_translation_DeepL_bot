@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Dict, NamedTuple, Optional
 from openai import AsyncOpenAI
 from src.config import settings
@@ -262,62 +263,83 @@ DEEPL_VALID_TARGET_CODES = {
 }
 
 
-async def _resolve_with_openai(user_input: str, api_key: str) -> Optional[LanguageInfo]:
-    """Uses OpenAI API to parse arbitrary language queries into standardized format."""
+async def _resolve_with_deepseek_v4(user_input: str, openrouter_api_key: str) -> Optional[LanguageInfo]:
+    """
+    Uses DeepSeek V4 Flash via OpenRouter (ultra-low cost and fast) to extract
+    the intended target language from free-form user utterance/instructions.
+    """
     try:
-        client = AsyncOpenAI(api_key=api_key)
+        client = AsyncOpenAI(
+            api_key=openrouter_api_key.strip(),
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                "HTTP-Referer": "https://github.com/rashevskyv/tg_translation_DeepL_bot",
+                "X-Title": "TG Translation Bot",
+            },
+        )
         system_prompt = (
-            "You are a language normalizer. Identify the language mentioned in user input. "
-            "Output JSON with fields: 'canonical_name' (English name, capitalized), "
-            "'iso_code' (2-letter ISO 639-1 code), "
-            "'deepl_target_code' (official DeepL target code e.g. EN-US, PT-PT, DE, PL, UK, etc. or null if DeepL doesn't support it), "
-            "'deepl_source_code' (official DeepL source code e.g. EN, PT, DE, etc. or null)."
+            "You are a target language extraction engine. The user sends a command, utterance, or sentence "
+            "requesting a target translation language (e.g. 'хочу перекладати на португальську, європейський варіант', "
+            "'зроби німецьку будь ласка', 'перемкни на польську', 'american english', 'японська').\n"
+            "Analyze the text, extract the requested language, and resolve it strictly to valid DeepL API target standards where possible.\n"
+            "Return JSON only with keys:\n"
+            "- 'canonical_name': Standard capitalized English name (e.g. 'Portuguese', 'German', 'Polish', 'English', 'Spanish', 'French', 'Japanese')\n"
+            "- 'iso_code': 2-letter ISO 639-1 code (e.g. 'pt', 'de', 'pl', 'en', 'es', 'ja')\n"
+            "- 'deepl_target_code': Official DeepL target code (e.g. 'PT-PT', 'PT-BR', 'DE', 'PL', 'EN-US', 'EN-GB', 'ES', 'FR', 'JA', 'UK') or null if not supported by DeepL\n"
+            "- 'deepl_source_code': Official DeepL source code (e.g. 'PT', 'DE', 'PL', 'EN', 'ES', 'JA', 'UK') or null."
         )
         response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="deepseek/deepseek-v4-flash-0731",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_input},
             ],
-            response_format={"type": "json_object"},
             temperature=0.0,
+            extra_body={"reasoning": {"effort": "none"}},
         )
-        content = response.choices[0].message.content
-        if content:
-            data = json.loads(content)
-            canonical = data.get("canonical_name", "").strip()
-            iso = data.get("iso_code", "").strip().lower()
-            deepl_tgt = data.get("deepl_target_code")
-            deepl_src = data.get("deepl_source_code")
-            if canonical and iso:
-                return LanguageInfo(
-                    canonical_name=canonical,
-                    deepl_target_code=deepl_tgt.upper() if deepl_tgt else None,
-                    deepl_source_code=deepl_src.upper() if deepl_src else None,
-                    iso_code=iso,
-                )
+        content = response.choices[0].message.content or ""
+        # Clean potential markdown wrapping ```json ... ```
+        clean_json = re.sub(r"^```(?:json)?\s*", "", content.strip(), flags=re.IGNORECASE)
+        clean_json = re.sub(r"\s*```$", "", clean_json.strip())
+
+        data = json.loads(clean_json)
+        canonical = data.get("canonical_name", "").strip()
+        iso = data.get("iso_code", "").strip().lower()
+        deepl_tgt = data.get("deepl_target_code")
+        deepl_src = data.get("deepl_source_code")
+        if canonical:
+            return LanguageInfo(
+                canonical_name=canonical,
+                deepl_target_code=deepl_tgt.upper() if deepl_tgt else None,
+                deepl_source_code=deepl_src.upper() if deepl_src else None,
+                iso_code=iso or "unknown",
+            )
     except Exception as e:
-        logger.warning(f"OpenAI language resolution failed: {e}")
+        logger.warning(f"DeepSeek V4 language resolution error: {e}")
     return None
 
 
-async def normalize_language(user_input: str, openai_api_key: Optional[str] = None) -> LanguageInfo:
+async def normalize_language(
+    user_input: str,
+    openrouter_api_key: Optional[str] = None,
+    openai_api_key: Optional[str] = None,
+) -> LanguageInfo:
     """
-    Normalizes any user input string (in any language/script) into a LanguageInfo object.
-    1. Checks comprehensive local dictionary.
-    2. If unknown and OpenAI key is available, queries OpenAI for smart resolution.
-    3. Fallback to capitalized input.
+    Normalizes any user input or conversational utterance into a standard LanguageInfo object:
+    1. Checks comprehensive local dictionary (instant lookup for single words/codes).
+    2. Uses DeepSeek V4 Flash via OpenRouter for smart extraction of conversational requests.
+    3. Fallback to clean title case.
     """
     clean_input = user_input.strip().lower()
     
-    # 1. Fast dictionary lookup
+    # 1. Fast dictionary lookup for exact single words / short terms
     if clean_input in KNOWN_LANGUAGES:
         return KNOWN_LANGUAGES[clean_input]
 
-    # 2. Try OpenAI if key is available
-    key = openai_api_key or settings.openai_api_key
-    if key:
-        ai_res = await _resolve_with_openai(user_input, key)
+    # 2. DeepSeek V4 Flash resolution via OpenRouter
+    or_key = openrouter_api_key or settings.openrouter_api_key
+    if or_key:
+        ai_res = await _resolve_with_deepseek_v4(user_input, or_key)
         if ai_res:
             return ai_res
 

@@ -146,19 +146,19 @@ async def callback_set_target_language(query: CallbackQuery, state: FSMContext) 
 @settings_router.message(SettingsStates.waiting_for_target_language)
 async def process_target_language_input(message: Message, state: FSMContext) -> None:
     raw_lang = message.text.strip() if message.text else ""
-    if not raw_lang or len(raw_lang) < 2 or len(raw_lang) > 60:
+    if not raw_lang or len(raw_lang) < 2 or len(raw_lang) > 250:
         await message.answer(
-            "⚠️ Invalid language name. Please enter a valid language (e.g., 'Португальська', 'English', 'German', 'pl').",
+            "⚠️ Invalid language name or description. Please type a language or phrase (e.g., 'Португальська', 'хочу німецьку', 'American English', 'pl').",
             reply_markup=get_cancel_keyboard(),
         )
         return
 
     user_id = message.from_user.id
-    # Get user's custom OpenAI / OpenRouter key or system key for resolving complex language names
-    openai_key = await db_manager.get_effective_api_key(user_id, "openai")
+    # Get user's custom OpenRouter / OpenAI key or system key for resolving complex utterances
+    openrouter_key = await db_manager.get_effective_api_key(user_id, "openrouter")
     
-    # Normalize language via comprehensive dictionary + OpenAI AI fallback
-    lang_info = await normalize_language(raw_lang, openai_api_key=openai_key)
+    # Normalize language via comprehensive dictionary + DeepSeek V4 Flash resolution
+    lang_info = await normalize_language(raw_lang, openrouter_api_key=openrouter_key)
     
     await db_manager.set_target_language(user_id, lang_info.canonical_name)
     await state.clear()

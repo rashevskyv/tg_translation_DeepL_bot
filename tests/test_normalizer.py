@@ -38,6 +38,23 @@ async def test_normalize_codes_and_english_names():
     assert res3.deepl_target_code == "PL"
 
 
+@pytest.mark.asyncio
+async def test_normalize_conversational_utterance_mock():
+    from unittest.mock import patch, MagicMock, AsyncMock
+    mock_resp = MagicMock()
+    mock_resp.choices = [
+        MagicMock(message=MagicMock(content='{"canonical_name": "Portuguese", "iso_code": "pt", "deepl_target_code": "PT-PT"}'))
+    ]
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_resp)
+
+    with patch("src.services.language_normalizer.AsyncOpenAI", return_value=mock_client):
+        res = await normalize_language("я хочу перекладати на португальську будь ласка", openrouter_api_key="fake-or-key")
+        assert res.canonical_name == "Portuguese"
+        assert res.deepl_target_code == "PT-PT"
+
+
+
 def test_deepl_provider_maps_portuguese_and_ukrainian_names():
     provider = DeepLProvider()
     assert provider._map_language("Португальська", is_target=True) == "PT-PT"

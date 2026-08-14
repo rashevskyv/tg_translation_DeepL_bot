@@ -18,15 +18,6 @@ def _get_error_settings_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def get_translation_actions_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="⚙️ Settings", callback_data="open_main_settings")]
-        ]
-    )
-
-
-
 @translation_router.message(F.text & ~F.text.startswith("/"))
 async def handle_translation_text(message: Message) -> None:
     user_id = message.from_user.id
@@ -74,21 +65,17 @@ async def handle_translation_text(message: Message) -> None:
             )
             return
 
-        # Delete status message and send final copyable code block
+        # Delete status message and send final clean copyable code block
         try:
             await status_msg.delete()
         except Exception:
             pass
 
         final_html = f"<code>{html.escape(translated_text)}</code>"
-        await message.reply(
-            final_html,
-            parse_mode="HTML",
-            reply_markup=get_translation_actions_keyboard(),
-        )
+        await message.reply(final_html, parse_mode="HTML")
         return
 
-    # Streaming mode for LLM providers (OpenAI, Gemini, Qwen, DeepSeek)
+    # Streaming mode for LLM providers (Gemini, GPT Luna, DeepSeek via OpenRouter)
     stream_msg = await message.reply(
         f"⏳ <i>Translating stream via {provider_title}...</i>",
         parse_mode="HTML",
@@ -138,11 +125,7 @@ async def handle_translation_text(message: Message) -> None:
             pass
 
         final_html = f"<code>{html.escape(accumulated_text)}</code>"
-        await message.reply(
-            final_html,
-            parse_mode="HTML",
-            reply_markup=get_translation_actions_keyboard(),
-        )
+        await message.reply(final_html, parse_mode="HTML")
 
     except Exception as e:
         try:
