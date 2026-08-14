@@ -1,0 +1,28 @@
+[Unit]
+Description=Telegram Multi-Engine Translation Bot
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/tg_translation_DeepL_bot
+EnvironmentFile=/opt/tg_translation_DeepL_bot/.env
+ExecStart=/opt/tg_translation_DeepL_bot/venv/bin/python -m src.main
+Restart=always
+RestartSec=5s
+
+# Security sandboxing options
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tg-translator-bot
+
+[Install]
+WantedBy=multi-user.target
