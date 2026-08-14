@@ -1,26 +1,33 @@
 # Журнал змін (Walkthrough)
 
-## Версія: v0.2.0 (Інтеграція OpenRouter та нових розумних моделей у Non-Thinking mode)
+## Версія: v0.2.1 (Інструменти призначення ключів користувачам & Адміністрування)
 
 ### Зміни:
-1. **Інтеграція OpenRouter як універсального шлюзу для LLM:**
-   - Додано провайдер `src/services/providers/openrouter_provider.py` для 4 передових моделей:
-     - `google/gemini-3.5-flash-lite` (Gemini 3.5 Flash Lite)
-     - `google/gemini-3.7-flash` (Gemini 3.7 Flash)
-     - `openai/gpt-5.6-luna` (OpenAI GPT-5.6 Luna)
-     - `deepseek/deepseek-v4-flash-0731` (DeepSeek V4 Flash)
-   - Усі моделі працюють у **Non-Thinking режимі** (`extra_body={"reasoning": {"effort": "none"}}`) для миттєвого чистого перекладу без блоків роздумів.
-   - Повна підтримка стрімінгу токенів у реальному часі.
+1. **Призначення ключів конкретним користувачам (User Key Assignment):**
+   - Створено утиліту `src/tools/manage_user.py`:
+     - `python -m src.tools.manage_user list` — перегляд усіх зареєстрованих користувачів та їх налаштувань.
+     - `python -m src.tools.manage_user set-key --user-id <ID> --provider <deepl|openrouter> --key <API_KEY>` — призначення індивідуального ключа.
+     - `python -m src.tools.manage_user delete-key --user-id <ID> --provider <provider>` — видалення індивідуального ключа.
+     - `python -m src.tools.manage_user set-settings --user-id <ID> --target-lang German --provider gemini_flash` — зміна налаштувань користувача.
 
-2. **Standalone DeepL:**
-   - **DeepL** залишено окремим високоточним нейромережевим рушієм перекладу через DeepL API.
+2. **Адміністративні команди в Telegram:**
+   - Якщо в `.env` вказано `ADMIN_USER_IDS=12345678,87654321`, адміністратор може в чаті з ботом виконати:
+     - `/assign_key <user_id> <deepl|openrouter> <key>` — призначити ключ (повідомлення з ключем миттєво видаляється для безпеки).
+     - `/user_info <user_id>` — отримати інформацію про обрану мову та налаштовані ключі користувача.
 
-3. **Єдине керування API-ключами:**
-   - Меню API-ключів спрощено: користувач може налаштувати **DeepL API Key** та один універсальний **OpenRouter API Key**, який автоматично відкриває доступ до всіх 4 сучасних моделей LLM!
+3. **Багаторівнева ієрархія ключів:**
+   - **Пріоритет 1 (Найвищий):** Персональний ключ користувача (введений ним самим у `/settings` або призначений адміном через `set-key`/`/assign_key`).
+   - **Пріоритет 2 (Fallback):** Системний ключ із `.env` (якщо вказано).
+   - **Пріоритет 3:** Якщо ні в користувача, ні в `.env` немає ключа — бот просить додати ключ у `/settings`.
 
 4. **Тестування:**
-   - Оновлено та додано тести для OpenRouter провайдера, менеджеру та бази даних.
-   - Всі 23 тести успішно проходять паралельно (`pytest -n auto`).
+   - 23 тести виконано паралельно (`pytest -n auto`), 100% пройдено.
+
+---
+
+## Версія: v0.2.0 (Інтеграція OpenRouter та нових розумних моделей у Non-Thinking mode)
+- Інтеграція OpenRouter (Gemini 3.5, Gemini 3.7, GPT-5.6 Luna, DeepSeek V4).
+- Standalone DeepL.
 
 ---
 

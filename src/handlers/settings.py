@@ -349,3 +349,84 @@ async def callback_delete_key_for_provider(query: CallbackQuery, state: FSMConte
         reply_markup=get_provider_key_action_keyboard(provider, False),
     )
     await query.answer("Key deleted.")
+
+
+# --- Admin Commands (Assign key to specific user) ---
+
+def _is_admin(user_id: int) -> bool:
+    if not settings.admin_user_ids:
+        return False
+    admin_ids = [aid.strip() for aid in settings.admin_user_ids.split(",") if aid.strip()]
+    return str(user_id) in admin_ids
+
+
+@settings_router.message(Command("assign_key"))
+async def cmd_assign_key(message: Message) -> None:
+    if not _is_admin(message.from_user.id):
+        return  # Silently ignore non-admins
+
+    # Automatically delete command message to protect key
+    try:
+        await message.delete()
+    except Exception:
+        pass
+
+    args = message.text.split()[1:] if message.text else []
+    if len(args) != 3:
+        await message.answer(
+            "⚠️ <b>Usage:</b> <code>/assign_key &lt;user_id&gt; &lt;deepl|openrouter&gt; &lt;api_key&gt;</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        target_uid = int(args[0])
+    except ValueError:
+        await message.answer("⚠️ Invalid user ID format.")
+        return
+
+    provider = args[1].lower()
+    api_key = args[2].strip()
+
+    from src.database.db import VALID_KEY_PROVIDERS
+    if provider not in VALID_KEY_PROVIDERS:
+        await message.answer(f"⚠️ Invalid provider. Supported: {', '.join(VALID_KEY_PROVIDERS)}")
+        return
+
+    await db_manager.set_user_api_key(target_uid, provider, api_key)
+    masked = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
+    await message.answer(
+        f"👑 <b>Admin Action:</b>\n"
+        f"Key for <b>{provider}</b> assigned to User ID <code>{target_uid}</code>: <code>{masked}</code>",
+        parse_mode="HTML",
+    )
+
+
+@settings_router.message(Command("user_info"))
+async def cmd_user_info(message: Message) -> None:
+    if not _is_admin(message.from_user.id):
+        return
+
+    args = message.text.split()[1:] if message.text else []
+    if not args:
+        await message.answer("⚠️ <b>Usage:</b> <code>/user_info &lt;user_id&gt;</code>", parse_mode="HTML")
+        return
+
+    try:
+        target_uid = int(args[0])
+    except ValueError:
+        await message.answer("⚠️ Invalid user ID.")
+        return
+
+    user_settings = await db_manager.get_user_settings(target_uid)
+    custom_keys = await db_manager.get_all_user_api_keys(target_uid)
+    keys_str = "\n".join(f"• <b>{k}</b>: <code>{v[:4]}...{v[-4:]}</code>" for k, v in custom_keys.items()) if custom_keys else "<i>None set (using fallback)</i>"
+
+    await message.answer(
+        f"👤 <b>User Info (ID: <code>{target_uid}</code>):</b>\n\n"
+        f"• Target Language: <code>{user_settings.target_language}</code>\n"
+        f"• Active Provider: <code>{user_settings.selected_provider}</code>\n\n"
+        f"<b>Configured Custom Keys:</b>\n{keys_str}",
+        parse_mode="HTML",
+    )
+

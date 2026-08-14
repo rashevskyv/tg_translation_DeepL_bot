@@ -52,6 +52,28 @@ OpenRouter is a unified platform providing access to hundreds of AI models via a
 | `/settings` or `⚙️ Settings` | Open interactive settings menu (target language, active engine, API keys) |
 | `/help` or `ℹ️ Help` | Display usage guide and supported engine details |
 | `[ Menu ]` Button | Native Telegram menu button in bottom-left corner |
+| `/assign_key <uid> <prov> <key>` | *(Admin only)* Assign specific API key to a user ID |
+| `/user_info <uid>` | *(Admin only)* Inspect user's current settings and custom keys |
+
+---
+
+## 🛠️ User & Key Management CLI Tool
+
+Admins can manage user preferences and API keys directly from the terminal:
+
+```bash
+# 1. List all registered users
+python -m src.tools.manage_user list
+
+# 2. Assign custom API key to a specific user
+python -m src.tools.manage_user set-key --user-id 123456789 --provider openrouter --key sk-or-v1-...
+
+# 3. Delete user's custom key
+python -m src.tools.manage_user delete-key --user-id 123456789 --provider openrouter
+
+# 4. Update user's settings (language / model)
+python -m src.tools.manage_user set-settings --user-id 123456789 --target-lang Portuguese --provider gemini_flash
+```
 
 ---
 

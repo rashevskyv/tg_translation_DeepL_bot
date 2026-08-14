@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openai_api_key: str = ""
 
+    # Optional Admin Telegram IDs (comma-separated, e.g. "12345678,87654321")
+    admin_user_ids: str = ""
+
     # Defaults
     default_target_language: str = "English"
     default_provider: str = "deepl"
