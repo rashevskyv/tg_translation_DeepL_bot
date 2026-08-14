@@ -4,20 +4,29 @@ from src.database.db import db_manager
 from src.services.detector import language_detector
 from src.services.providers.base import BaseTranslationProvider
 from src.services.providers.deepl_provider import DeepLProvider
-from src.services.providers.openai_provider import OpenAIProvider
-from src.services.providers.gemini_provider import GeminiProvider
-from src.services.providers.qwen_provider import QwenProvider
-from src.services.providers.deepseek_provider import DeepSeekProvider
+from src.services.providers.openrouter_provider import OpenRouterProvider
 
 
 class TranslationManager:
     def __init__(self):
         self.providers: Dict[str, BaseTranslationProvider] = {
             "deepl": DeepLProvider(),
-            "openai": OpenAIProvider(),
-            "gemini": GeminiProvider(),
-            "qwen": QwenProvider(),
-            "deepseek": DeepSeekProvider(),
+            "gemini_lite": OpenRouterProvider(
+                name="gemini_lite",
+                model_id="google/gemini-3.5-flash-lite",
+            ),
+            "gemini_flash": OpenRouterProvider(
+                name="gemini_flash",
+                model_id="google/gemini-3.7-flash",
+            ),
+            "openai_luna": OpenRouterProvider(
+                name="openai_luna",
+                model_id="openai/gpt-5.6-luna",
+            ),
+            "deepseek_flash": OpenRouterProvider(
+                name="deepseek_flash",
+                model_id="deepseek/deepseek-v4-flash-0731",
+            ),
         }
 
     def get_provider(self, name: str) -> BaseTranslationProvider:
@@ -44,9 +53,10 @@ class TranslationManager:
         api_key = await db_manager.get_effective_api_key(user_id, provider_name)
         if not api_key:
             provider_title = PROVIDERS_INFO.get(provider_name, {}).get("name", provider_name)
+            key_name = "DeepL API Key" if provider_name == "deepl" else "OpenRouter API Key"
             raise ValueError(
                 f"API Key for {provider_title} is not configured.\n\n"
-                f"Please open /settings and add your API key for {provider_title}."
+                f"Please open /settings and add your {key_name}."
             )
 
         # Detect language

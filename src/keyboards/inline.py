@@ -20,7 +20,7 @@ def get_settings_keyboard(current_target: str, current_provider: str) -> InlineK
         ],
         [
             InlineKeyboardButton(
-                text="🔑 Manage API Keys",
+                text="🔑 Manage API Keys (DeepL & OpenRouter)",
                 callback_data="manage_api_keys_menu",
             )
         ],
@@ -52,25 +52,34 @@ def get_providers_keyboard(current_provider: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-def get_api_keys_menu_keyboard(configured_providers: Dict[str, bool]) -> InlineKeyboardMarkup:
-    keyboard = []
-    for prov_key in SUPPORTED_PROVIDERS:
-        info = PROVIDERS_INFO.get(prov_key, {})
-        title = info.get("name", prov_key)
-        status_icon = "🟢 Custom Key" if configured_providers.get(prov_key) else "⚪ Not Set / Env Default"
-        keyboard.append([
+def get_api_keys_menu_keyboard(configured_keys: Dict[str, bool]) -> InlineKeyboardMarkup:
+    # 1. DeepL Key
+    deepl_status = "🟢 Custom Key Set" if configured_keys.get("deepl") else "⚪ Not Set / Env Default"
+    # 2. OpenRouter Key (Universal)
+    openrouter_status = "🟢 Custom Key Set" if configured_keys.get("openrouter") else "⚪ Not Set / Env Default"
+
+    keyboard = [
+        [
             InlineKeyboardButton(
-                text=f"{title} ({status_icon})",
-                callback_data=f"manage_key_for:{prov_key}",
+                text=f"DeepL API Key ({deepl_status})",
+                callback_data="manage_key_for:deepl",
             )
-        ])
-    keyboard.append([
-        InlineKeyboardButton(text="⬅️ Back to Settings", callback_data="open_main_settings")
-    ])
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"OpenRouter API Key ({openrouter_status})",
+                callback_data="manage_key_for:openrouter",
+            )
+        ],
+        [
+            InlineKeyboardButton(text="⬅️ Back to Settings", callback_data="open_main_settings")
+        ],
+    ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def get_provider_key_action_keyboard(provider: str, has_custom_key: bool) -> InlineKeyboardMarkup:
+    provider_title = "OpenRouter" if provider == "openrouter" else PROVIDERS_INFO.get(provider, {}).get("name", provider)
     keyboard = [
         [
             InlineKeyboardButton(

@@ -3,7 +3,9 @@ from pathlib import Path
 from typing import Dict, Optional
 import aiosqlite
 from pydantic import BaseModel
-from src.config import settings, SUPPORTED_PROVIDERS
+from src.config import settings, SUPPORTED_PROVIDERS, PROVIDERS_INFO
+
+VALID_KEY_PROVIDERS = set(SUPPORTED_PROVIDERS) | {"openrouter", "openai", "deepl"}
 
 
 class UserSettings(BaseModel):
@@ -111,7 +113,7 @@ class DatabaseManager:
 
     async def set_user_api_key(self, user_id: int, provider: str, api_key: str) -> None:
         """Saves custom API key for a specific provider."""
-        if provider not in SUPPORTED_PROVIDERS:
+        if provider not in VALID_KEY_PROVIDERS:
             raise ValueError(f"Unsupported provider: {provider}")
         clean_key = api_key.strip()
         async with aiosqlite.connect(self.db_path) as db:
@@ -129,6 +131,8 @@ class DatabaseManager:
 
     async def delete_user_api_key(self, user_id: int, provider: str) -> None:
         """Deletes user's custom API key for a specific provider."""
+        if provider not in VALID_KEY_PROVIDERS:
+            raise ValueError(f"Unsupported provider: {provider}")
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 "DELETE FROM user_api_keys WHERE user_id = ? AND provider = ?",
@@ -159,18 +163,27 @@ class DatabaseManager:
     async def get_effective_api_key(self, user_id: int, provider: str) -> Optional[str]:
         """
         Returns custom API key if set by user, otherwise falls back to system environment key.
+        Supports unified OpenRouter key mapping across all OpenRouter models.
         """
+        # 1. Check direct user key
         custom_key = await self.get_user_api_key(user_id, provider)
         if custom_key:
             return custom_key
 
-        # Fallbacks from settings
+        # 2. Check unified OpenRouter key if provider uses OpenRouter
+        provider_meta = PROVIDERS_INFO.get(provider, {})
+        if provider_meta.get("key_type") == "openrouter":
+            openrouter_user_key = await self.get_user_api_key(user_id, "openrouter")
+            if openrouter_user_key:
+                return openrouter_user_key
+            if settings.openrouter_api_key:
+                return settings.openrouter_api_key
+
+        # 3. Fallbacks from settings
         fallback_map = {
             "deepl": settings.deepl_api_key,
+            "openrouter": settings.openrouter_api_key,
             "openai": settings.openai_api_key,
-            "gemini": settings.gemini_api_key,
-            "qwen": settings.dashscope_api_key,
-            "deepseek": settings.deepseek_api_key,
         }
         return fallback_map.get(provider) or None
 

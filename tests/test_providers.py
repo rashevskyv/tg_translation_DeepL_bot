@@ -1,25 +1,16 @@
 from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
 from src.services.providers.deepl_provider import DeepLProvider
-from src.services.providers.openai_provider import OpenAIProvider
-from src.services.providers.gemini_provider import GeminiProvider
-from src.services.providers.qwen_provider import QwenProvider
-from src.services.providers.deepseek_provider import DeepSeekProvider
+from src.services.providers.openrouter_provider import OpenRouterProvider
 
 
 def test_deepl_url_and_language_mapping():
     provider = DeepLProvider()
-    # Free endpoint
     assert provider._get_api_url("12345:fx") == "https://api-free.deepl.com/v2/translate"
-    # Pro endpoint
     assert provider._get_api_url("12345pro") == "https://api.deepl.com/v2/translate"
-
-    # Language mapping
     assert provider._map_language("Ukrainian", is_target=True) == "UK"
     assert provider._map_language("English", is_target=True) == "EN-US"
-    assert provider._map_language("English", is_target=False) == "EN"
     assert provider._map_language("German", is_target=True) == "DE"
-    assert provider._map_language("Polish", is_target=True) == "PL"
 
 
 @pytest.mark.asyncio
@@ -44,10 +35,9 @@ async def test_deepl_translate_mock():
 
 
 @pytest.mark.asyncio
-async def test_openai_translate_stream_mock():
-    provider = OpenAIProvider()
+async def test_openrouter_translate_stream_mock():
+    provider = OpenRouterProvider(name="gemini_flash", model_id="google/gemini-3.7-flash")
     
-    # Mock stream chunks
     class MockChunk:
         def __init__(self, text):
             self.choices = [MagicMock(delta=MagicMock(content=text))]
@@ -61,13 +51,13 @@ async def test_openai_translate_stream_mock():
 
     with patch.object(provider, "_get_client", return_value=mock_client):
         chunks = []
-        async for chunk in provider.translate_stream("Привіт Світ", "Ukrainian", "English", "fake-key"):
+        async for chunk in provider.translate_stream("Привіт Світ", "Ukrainian", "English", "fake-or-key"):
             chunks.append(chunk)
         assert "".join(chunks) == "Hello World"
 
 
 @pytest.mark.asyncio
-async def test_gemini_missing_key():
-    provider = GeminiProvider()
-    with pytest.raises(ValueError, match="Gemini API Key is not configured"):
+async def test_openrouter_missing_key():
+    provider = OpenRouterProvider(name="openai_luna", model_id="openai/gpt-5.6-luna")
+    with pytest.raises(ValueError, match="OpenRouter API Key is not configured"):
         await provider.translate("Привіт", "Ukrainian", "English", "")

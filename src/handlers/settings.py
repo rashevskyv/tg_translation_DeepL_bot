@@ -67,13 +67,13 @@ async def cmd_help(message: Message, state: FSMContext) -> None:
         "• Tap <b>⚙️ Settings</b> on the keyboard below (or send /settings)\n"
         "• Send any text to immediately receive a translation\n\n"
         "<b>Supported Engines:</b>\n"
-        "• <b>DeepL:</b> High precision neural translation\n"
-        "• <b>OpenAI:</b> Fast GPT-4o-mini translation\n"
-        "• <b>Google Gemini:</b> Gemini 2.0 Flash with live streaming\n"
-        "• <b>Qwen:</b> Alibaba Cloud Qwen-Plus\n"
-        "• <b>DeepSeek:</b> DeepSeek-V3 Chat\n\n"
+        "• <b>DeepL (Standalone):</b> High precision neural translation\n"
+        "• <b>Gemini 3.5 Flash Lite:</b> Ultra-fast non-thinking translation via OpenRouter\n"
+        "• <b>Gemini 3.7 Flash:</b> High intelligence non-thinking translation via OpenRouter\n"
+        "• <b>OpenAI GPT-5.6 Luna:</b> State-of-the-art GPT translation via OpenRouter\n"
+        "• <b>DeepSeek V4 Flash:</b> High efficiency translation via OpenRouter\n\n"
         "<b>One-Click Copy:</b>\n"
-        "Every translation is sent in a code box. Simply tap/click on it to instantly copy it to your clipboard!"
+        "Every translation is sent in a <code>monospace box</code>. Simply tap/click on it to instantly copy it to your clipboard!"
     )
     await message.answer(help_text, parse_mode="HTML", reply_markup=get_main_reply_keyboard())
 
@@ -96,7 +96,6 @@ async def cmd_settings(message: Message, state: FSMContext) -> None:
             user_settings.selected_provider,
         ),
     )
-
 
 
 @settings_router.callback_query(F.data == "open_main_settings")
@@ -134,7 +133,7 @@ async def callback_set_target_language(query: CallbackQuery, state: FSMContext) 
     prompt_text = (
         "🌐 <b>Set Target Translation Language</b>\n\n"
         "Please type the name or code of the language you want Ukrainian text to be translated into "
-        "(e.g., <code>English</code>, <code>German</code>, <code>Polish</code>, <code>Spanish</code>, <code>French</code>, <code>Italian</code>, <code>Japanese</code>, <code>pl</code>, <code>de</code>, <code>es</code>):"
+        "(e.g., <code>Португальська</code>, <code>English</code>, <code>German</code>, <code>Polish</code>, <code>Spanish</code>, <code>French</code>, <code>Japanese</code>, <code>pl</code>, <code>de</code>, <code>es</code>):"
     )
     await query.message.edit_text(
         prompt_text,
@@ -155,7 +154,7 @@ async def process_target_language_input(message: Message, state: FSMContext) -> 
         return
 
     user_id = message.from_user.id
-    # Get user's custom OpenAI key or system key for resolving complex/arbitrary language names
+    # Get user's custom OpenAI / OpenRouter key or system key for resolving complex language names
     openai_key = await db_manager.get_effective_api_key(user_id, "openai")
     
     # Normalize language via comprehensive dictionary + OpenAI AI fallback
@@ -171,7 +170,7 @@ async def process_target_language_input(message: Message, state: FSMContext) -> 
     else:
         lang_note = (
             f"<code>{lang_info.canonical_name}</code>\n"
-            f"<i>ℹ️ Note: Supported via OpenAI, Gemini, Qwen, and DeepSeek. (Not available in DeepL).</i>"
+            f"<i>ℹ️ Note: Supported via OpenRouter models (Gemini/GPT/DeepSeek). (Not available in DeepL).</i>"
         )
 
     await message.answer(
@@ -184,7 +183,6 @@ async def process_target_language_input(message: Message, state: FSMContext) -> 
     )
 
 
-
 # --- Model / Provider Selection ---
 
 @settings_router.callback_query(F.data == "select_provider_menu")
@@ -194,7 +192,8 @@ async def callback_select_provider_menu(query: CallbackQuery, state: FSMContext)
     user_settings = await db_manager.get_user_settings(user_id)
     text = (
         "🤖 <b>Select Active Translation Engine</b>\n\n"
-        "Choose which provider/model will process your translation requests:"
+        "Choose which provider/model will process your translation requests:\n"
+        "<i>(All LLM models run in fast Non-Thinking mode)</i>"
     )
     await query.message.edit_text(
         text,
@@ -213,9 +212,10 @@ async def callback_choose_provider(query: CallbackQuery, state: FSMContext) -> N
         user_settings = await db_manager.get_user_settings(user_id)
         provider_title = PROVIDERS_INFO.get(provider, {}).get("name", provider)
 
+        key_req = "DeepL API Key" if provider == "deepl" else "OpenRouter API Key"
         await query.message.edit_text(
             f"✅ Active engine set to <b>{provider_title}</b>.\n\n"
-            f"Note: Ensure you have an API key configured for {provider_title} via 'Manage API Keys' or server environment.",
+            f"Note: Ensure you have an API key configured for {key_req} via 'Manage API Keys' or server environment.",
             parse_mode="HTML",
             reply_markup=get_settings_keyboard(
                 user_settings.target_language,
@@ -232,12 +232,16 @@ async def callback_manage_api_keys_menu(query: CallbackQuery, state: FSMContext)
     await state.clear()
     user_id = query.from_user.id
     custom_keys = await db_manager.get_all_user_api_keys(user_id)
-    configured_map = {p: bool(custom_keys.get(p)) for p in SUPPORTED_PROVIDERS}
+    configured_map = {
+        "deepl": bool(custom_keys.get("deepl")),
+        "openrouter": bool(custom_keys.get("openrouter")),
+    }
 
     text = (
         "🔑 <b>API Keys Management (Per-User Storage)</b>\n\n"
-        "Your API keys are stored securely and privately in the local database.\n"
-        "Select a provider to view, set, or delete your custom API key:"
+        "Your API keys are stored securely and privately in the local database.\n\n"
+        "• <b>DeepL API Key:</b> Used for standalone DeepL translation.\n"
+        "• <b>OpenRouter API Key:</b> Universal key unlocking Gemini 3.5, Gemini 3.7, GPT-5.6 Luna, and DeepSeek V4."
     )
     await query.message.edit_text(
         text,
@@ -252,7 +256,7 @@ async def callback_manage_key_for_provider(query: CallbackQuery, state: FSMConte
     provider = query.data.split(":", 1)[1]
     user_id = query.from_user.id
     custom_key = await db_manager.get_user_api_key(user_id, provider)
-    provider_title = PROVIDERS_INFO.get(provider, {}).get("name", provider)
+    provider_title = "OpenRouter" if provider == "openrouter" else PROVIDERS_INFO.get(provider, {}).get("name", provider)
 
     if custom_key:
         masked_key = custom_key[:4] + "..." + custom_key[-4:] if len(custom_key) > 8 else "***"
@@ -260,8 +264,13 @@ async def callback_manage_key_for_provider(query: CallbackQuery, state: FSMConte
     else:
         status_msg = "⚪ <b>Status:</b> No custom API key set (using server default if available)."
 
+    extra_desc = ""
+    if provider == "openrouter":
+        extra_desc = "<i>💡 This single OpenRouter key powers all 4 smart LLM models (Gemini, GPT Luna, DeepSeek).</i>\n\n"
+
     text = (
         f"🔑 <b>{provider_title} API Key</b>\n\n"
+        f"{extra_desc}"
         f"{status_msg}\n\n"
         "Choose an action:"
     )
@@ -279,7 +288,7 @@ async def callback_input_key_for_provider(query: CallbackQuery, state: FSMContex
     await state.set_state(SettingsStates.waiting_for_api_key)
     await state.update_data(target_provider=provider)
 
-    provider_title = PROVIDERS_INFO.get(provider, {}).get("name", provider)
+    provider_title = "OpenRouter" if provider == "openrouter" else PROVIDERS_INFO.get(provider, {}).get("name", provider)
     text = (
         f"✏️ <b>Enter your {provider_title} API Key:</b>\n\n"
         "Send your API key as a text message.\n"
@@ -305,7 +314,8 @@ async def process_api_key_input(message: Message, state: FSMContext) -> None:
     except Exception:
         pass
 
-    if not provider or provider not in SUPPORTED_PROVIDERS or not api_key:
+    valid_keys = SUPPORTED_PROVIDERS + ["openrouter"]
+    if not provider or provider not in valid_keys or not api_key:
         await state.clear()
         await message.answer("⚠️ Failed to set API key. Please try again from /settings.")
         return
@@ -314,7 +324,7 @@ async def process_api_key_input(message: Message, state: FSMContext) -> None:
     await db_manager.set_user_api_key(user_id, provider, api_key)
     await state.clear()
 
-    provider_title = PROVIDERS_INFO.get(provider, {}).get("name", provider)
+    provider_title = "OpenRouter" if provider == "openrouter" else PROVIDERS_INFO.get(provider, {}).get("name", provider)
     masked_key = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
 
     await message.answer(
@@ -331,7 +341,7 @@ async def callback_delete_key_for_provider(query: CallbackQuery, state: FSMConte
     user_id = query.from_user.id
     await db_manager.delete_user_api_key(user_id, provider)
 
-    provider_title = PROVIDERS_INFO.get(provider, {}).get("name", provider)
+    provider_title = "OpenRouter" if provider == "openrouter" else PROVIDERS_INFO.get(provider, {}).get("name", provider)
     await query.message.edit_text(
         f"🗑️ Custom API Key for <b>{provider_title}</b> has been deleted.\n"
         f"The bot will now use the server default key (if available).",

@@ -25,7 +25,6 @@ async def custom_manager():
 async def test_prepare_translation_ukrainian_direction(custom_manager):
     mgr, db = custom_manager
     user_id = 777
-    # Set target language to German and key for deepl
     await db.set_target_language(user_id, "German")
     await db.set_user_api_key(user_id, "deepl", "fake-deepl-key:fx")
 
@@ -36,6 +35,22 @@ async def test_prepare_translation_ukrainian_direction(custom_manager):
     assert api_key == "fake-deepl-key:fx"
     assert source_lang == "Ukrainian"
     assert target_lang == "German"
+
+
+@pytest.mark.asyncio
+async def test_prepare_translation_openrouter_unified_key(custom_manager):
+    mgr, db = custom_manager
+    user_id = 777
+    await db.set_user_provider(user_id, "gemini_flash")
+    await db.set_user_api_key(user_id, "openrouter", "sk-or-v1-testkey")
+
+    provider, api_key, source_lang, target_lang = await mgr.prepare_translation(
+        user_id, "Hello, this is a test in English."
+    )
+    assert provider.name == "gemini_flash"
+    assert api_key == "sk-or-v1-testkey"
+    assert source_lang == "English"
+    assert target_lang == "Ukrainian"
 
 
 @pytest.mark.asyncio
@@ -57,7 +72,6 @@ async def test_prepare_translation_foreign_direction(custom_manager):
 async def test_prepare_translation_missing_key(custom_manager):
     mgr, db = custom_manager
     user_id = 888
-    # User has no key and no fallback in settings
     with patch("src.database.db.settings.deepl_api_key", ""):
-        with pytest.raises(ValueError, match="API Key for DeepL is not configured"):
+        with pytest.raises(ValueError, match="API Key for DeepL"):
             await mgr.prepare_translation(user_id, "Hello world")

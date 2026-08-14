@@ -7,12 +7,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     bot_token: str = ""
     
-    # Optional default API keys
+    # Provider API keys
     deepl_api_key: str = ""
+    openrouter_api_key: str = ""
     openai_api_key: str = ""
-    gemini_api_key: str = ""
-    dashscope_api_key: str = ""
-    deepseek_api_key: str = ""
 
     # Defaults
     default_target_language: str = "English"
@@ -30,36 +28,41 @@ class Settings(BaseSettings):
     )
 
 
-# Supported providers metadata
+# Supported providers & models metadata
 PROVIDERS_INFO: Dict[str, Dict[str, str]] = {
     "deepl": {
-        "name": "DeepL",
+        "name": "DeepL (Standalone)",
         "model": "default",
+        "key_type": "deepl",
         "description": "High-accuracy neural machine translation (DeepL API)",
         "supports_streaming": "false",
     },
-    "openai": {
-        "name": "OpenAI",
-        "model": "gpt-4o-mini",
-        "description": "Fast and intelligent translation via GPT-4o-mini",
+    "gemini_lite": {
+        "name": "Gemini 3.5 Flash Lite",
+        "model": "google/gemini-3.5-flash-lite",
+        "key_type": "openrouter",
+        "description": "Ultra-fast low-latency translation via OpenRouter",
         "supports_streaming": "true",
     },
-    "gemini": {
-        "name": "Google Gemini",
-        "model": "gemini-2.0-flash",
-        "description": "Ultra-fast multimodal translation with Gemini Flash",
+    "gemini_flash": {
+        "name": "Gemini 3.7 Flash",
+        "model": "google/gemini-3.7-flash",
+        "key_type": "openrouter",
+        "description": "Next-gen intelligent multimodal translation via OpenRouter",
         "supports_streaming": "true",
     },
-    "qwen": {
-        "name": "Qwen",
-        "model": "qwen-plus",
-        "description": "Alibaba Cloud Qwen AI translation",
+    "openai_luna": {
+        "name": "OpenAI GPT-5.6 Luna",
+        "model": "openai/gpt-5.6-luna",
+        "key_type": "openrouter",
+        "description": "State-of-the-art GPT translation via OpenRouter",
         "supports_streaming": "true",
     },
-    "deepseek": {
-        "name": "DeepSeek",
-        "model": "deepseek-chat",
-        "description": "DeepSeek V3 high quality translation",
+    "deepseek_flash": {
+        "name": "DeepSeek V4 Flash",
+        "model": "deepseek/deepseek-v4-flash-0731",
+        "key_type": "openrouter",
+        "description": "High efficiency DeepSeek V4 translation via OpenRouter",
         "supports_streaming": "true",
     },
 }

@@ -36,9 +36,9 @@ async def test_update_target_language(temp_db):
 @pytest.mark.asyncio
 async def test_update_user_provider(temp_db):
     user_id = 123456
-    await temp_db.set_user_provider(user_id, "openai")
+    await temp_db.set_user_provider(user_id, "gemini_flash")
     settings = await temp_db.get_user_settings(user_id)
-    assert settings.selected_provider == "openai"
+    assert settings.selected_provider == "gemini_flash"
 
     with pytest.raises(ValueError):
         await temp_db.set_user_provider(user_id, "unsupported_provider")
@@ -57,11 +57,11 @@ async def test_user_api_keys_crud(temp_db):
     assert key == "test-key-12345:fx"
 
     # Set another key
-    await temp_db.set_user_api_key(user_id, "openai", "sk-proj-testkey")
+    await temp_db.set_user_api_key(user_id, "openrouter", "sk-or-v1-testkey")
     all_keys = await temp_db.get_all_user_api_keys(user_id)
     assert all_keys == {
         "deepl": "test-key-12345:fx",
-        "openai": "sk-proj-testkey",
+        "openrouter": "sk-or-v1-testkey",
     }
 
     # Delete key

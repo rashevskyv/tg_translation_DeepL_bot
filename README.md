@@ -1,41 +1,57 @@
-# Telegram Translation Bot (DeepL & Multi-LLM)
+# Telegram Translation Bot (DeepL & OpenRouter LLMs)
 
-A modern, high-performance, asynchronous Telegram bot for automated bidirectional translations between **Ukrainian** and any foreign language with support for 5 translation engines: **DeepL**, **OpenAI**, **Google Gemini**, **Qwen**, and **DeepSeek**.
+A modern, high-performance, asynchronous Telegram bot for automated bidirectional translations between **Ukrainian** and any foreign language with support for **DeepL Standalone** and top-tier LLMs via **OpenRouter** (`Gemini 3.5 Flash Lite`, `Gemini 3.7 Flash`, `GPT-5.6 Luna`, `DeepSeek V4 Flash`) running in **Non-Thinking mode**.
 
 ---
 
 ## 🌟 Key Features
 
 - **Smart Bidirectional Translation:**
-  - **Ukrainian text** $\rightarrow$ Automatically translated into your configured **Target Language** (e.g. English, German, Polish, Spanish, etc.).
+  - **Ukrainian text** $\rightarrow$ Automatically translated into your configured **Target Language** (e.g. Portuguese, English, German, Polish, Spanish, etc.).
   - **Foreign text (non-Ukrainian)** $\rightarrow$ Language is automatically detected and translated into **Ukrainian**.
-- **Multi-Engine Support:**
-  - 🔵 **DeepL:** Industry-standard neural machine translation (supports both Free `:fx` and Pro keys).
-  - 🟢 **OpenAI:** Fast, contextual translation powered by `gpt-4o-mini`.
-  - 🔴 **Google Gemini:** Ultra-fast streaming translations powered by `gemini-2.0-flash`.
-  - 🟣 **Qwen:** Alibaba Cloud DashScope `qwen-plus` model.
-  - 🔷 **DeepSeek:** High precision `deepseek-chat` model.
-- **Real-Time Streaming & One-Click Copy:**
-  - For LLM providers, translations stream directly to the chat with throttled updates to respect Telegram rate limits.
-  - Once translation completes, the intermediate stream message is deleted, and the final translation is delivered in a code block (`<pre><code>`), enabling **instant one-click copy to clipboard**.
+- **Supported Translation Engines:**
+  - 🔵 **DeepL (Standalone):** Industry-standard neural machine translation (supports Free `:fx` and Pro keys).
+  - 🔴 **Gemini 3.5 Flash Lite (OpenRouter):** Ultra-fast, low-latency translation (`google/gemini-3.5-flash-lite`).
+  - 🔴 **Gemini 3.7 Flash (OpenRouter):** Next-gen multimodal translation (`google/gemini-3.7-flash`).
+  - 🟢 **OpenAI GPT-5.6 Luna (OpenRouter):** State-of-the-art language intelligence (`openai/gpt-5.6-luna`).
+  - 🔷 **DeepSeek V4 Flash (OpenRouter):** High efficiency translation (`deepseek/deepseek-v4-flash-0731`).
+- **Enforced Non-Thinking Mode:**
+  - All LLM models operate in pure translation mode without reasoning artifacts or thought delays (`reasoning: {"effort": "none"}`).
+- **Real-Time Streaming & One-Click Tap-to-Copy:**
+  - Fast token streaming with throttled updates.
+  - Final translation delivered inside `<code>...</code>` tags — **single click/tap copies immediately to clipboard**.
 - **Interactive In-Chat Settings GUI (`/settings`):**
-  - **Multilingual Target Language Input:** Type the target language in any language or format (e.g., `Португальська`, `Portuguese`, `Німецька`, `German`, `pl`, `es`). The bot uses an integrated normalizer with OpenAI resolution to match the exact canonical English name and official DeepL code (`PT-PT`, `DE`, `PL`, etc.).
-  - **Switch Active Engine:** Choose any supported provider via inline buttons.
-  - **Manage API Keys:** Set, view (masked), or delete personal API keys directly inside the chat.
-- **Privacy & Security:**
-  - Sensitive messages containing API keys are **immediately deleted** from the chat after saving.
-  - API keys and user preferences are stored per-user in a local SQLite database (`users.db`).
-  - Strict `.gitignore` ensures no secrets or database files are committed to Git.
+  - **Multilingual Target Language Input:** Type the target language in Ukrainian, English, or ISO code (e.g., `Португальська`, `Portuguese`, `pt`).
+  - **Switch Active Engine:** Pick between DeepL and any OpenRouter model.
+  - **Manage API Keys:** Set your standalone DeepL key and a single universal **OpenRouter API Key** (covers all 4 LLM models).
 
 ---
 
-## 📋 Bot Commands
+## 🔑 How to Register & Get OpenRouter API Keys
 
-| Command | Description |
+OpenRouter is a unified platform providing access to hundreds of AI models via a single API key:
+
+1. **Sign Up:**
+   - Go to [openrouter.ai](https://openrouter.ai) and create an account (using Google, GitHub, or email).
+2. **Add Credits:**
+   - Navigate to [openrouter.ai/credits](https://openrouter.ai/credits) to add a balance (supports cards, crypto).
+3. **Create an API Key:**
+   - Go to [openrouter.ai/keys](https://openrouter.ai/keys).
+   - Click **Create Key**, give it a name (e.g., `Telegram Bot`), and copy the generated key (starts with `sk-or-v1-...`).
+4. **Add to Bot:**
+   - Either paste it in your `.env` file as `OPENROUTER_API_KEY=sk-or-v1-...`
+   - Or open the bot, tap **⚙️ Settings** $\rightarrow$ **🔑 Manage API Keys** $\rightarrow$ **OpenRouter API Key** $\rightarrow$ **✏️ Enter / Replace API Key** and send it.
+
+---
+
+## 📋 Bot Commands & Controls
+
+| Trigger | Description |
 | :--- | :--- |
 | `/start` | Launch the bot, view welcome instructions, and inspect current settings |
-| `/settings` | Open interactive settings menu (target language, active engine, API keys) |
-| `/help` | Display usage guide and supported engine details |
+| `/settings` or `⚙️ Settings` | Open interactive settings menu (target language, active engine, API keys) |
+| `/help` or `ℹ️ Help` | Display usage guide and supported engine details |
+| `[ Menu ]` Button | Native Telegram menu button in bottom-left corner |
 
 ---
 
@@ -58,25 +74,18 @@ pip install -r requirements.txt
 
 ### 2. Configure Environment Variables
 
-Copy `.env.example` to `.env`:
-
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Fill in your `BOT_TOKEN` and any optional fallback API keys:
-
 ```ini
 # Required:
-BOT_TOKEN=1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ
+BOT_TOKEN=8607012156:AAFfPNVHrFQ7SaCMJsae_0pW8tXKjaKrA28
 
-# Optional Server-Wide Fallback Keys:
+# Provider API Keys:
 DEEPL_API_KEY=7d501876-f8ec-481c-9795-7fc2396a7e22:fx
-OPENAI_API_KEY=
-GEMINI_API_KEY=
-DASHSCOPE_API_KEY=
-DEEPSEEK_API_KEY=
+OPENROUTER_API_KEY=sk-or-v1-your_openrouter_key_here
 
 # Settings
 DEFAULT_TARGET_LANGUAGE=English
@@ -87,41 +96,17 @@ LOG_LEVEL=INFO
 
 ### 3. Install & Start as Systemd Service
 
-Copy the service file into systemd:
-
 ```bash
 sudo cp systemd/tg-translator.service /etc/systemd/system/tg-translator.service
 
-# Reload daemon and enable service
 sudo systemctl daemon-reload
-sudo systemctl enable tg-translator.service
-sudo systemctl start tg-translator.service
-```
-
-### 4. Monitor & Check Logs
-
-```bash
-# Check status
-sudo systemctl status tg-translator.service
-
-# View real-time logs
-journalctl -u tg-translator.service -f
+sudo systemctl enable --now tg-translator.service
 ```
 
 ---
 
 ## 🧪 Running Tests (Parallel Execution)
 
-Run all unit and integration tests in parallel using `pytest-xdist`:
-
 ```powershell
 pytest -n auto -v
 ```
-
----
-
-## 🔒 Security Best Practices
-
-1. **Never commit `.env` or `*.db` files.** They are ignored in `.gitignore`.
-2. **Per-User Keys:** Each user can securely provide their own API key via `/settings`, avoiding centralized API quota depletion.
-3. **Auto-Deletion:** The bot automatically removes messages containing API keys right after they are entered.
