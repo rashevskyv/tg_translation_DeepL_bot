@@ -15,6 +15,24 @@ def test_detect_ukrainian_with_specific_chars():
     assert code == "uk"
 
 
+def test_detect_ukrainian_slang_and_colloquial():
+    is_ukr, code, name = language_detector.detect("шо ти, голова")
+    assert is_ukr is True
+    assert code == "uk"
+    assert name == "Ukrainian"
+
+    is_ukr2, code2, name2 = language_detector.detect("шо робиш, брате?")
+    assert is_ukr2 is True
+    assert code2 == "uk"
+
+
+def test_detect_russian():
+    is_ukr, code, name = language_detector.detect("Привет, как дела? Что делаешь?")
+    assert is_ukr is False
+    assert code == "ru"
+    assert name == "Russian"
+
+
 def test_detect_english():
     text = "Hello, how are you doing today? I hope everything is well."
     is_ukr, code, name = language_detector.detect(text)
