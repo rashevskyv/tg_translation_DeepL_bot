@@ -5,19 +5,13 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=ubuntu
-Group=ubuntu
-WorkingDirectory=/opt/tg_translation_DeepL_bot
-EnvironmentFile=/opt/tg_translation_DeepL_bot/.env
-ExecStart=/opt/tg_translation_DeepL_bot/venv/bin/python -m src.main
+User=root
+Group=root
+WorkingDirectory=/root/tg_translation_DeepL_bot
+EnvironmentFile=/root/tg_translation_DeepL_bot/.env
+ExecStart=/root/tg_translation_DeepL_bot/venv/bin/python -m src.main
 Restart=always
 RestartSec=5s
-
-# Security sandboxing options
-NoNewPrivileges=true
-ProtectSystem=full
-ProtectHome=read-only
-PrivateTmp=true
 
 # Logging
 StandardOutput=journal
