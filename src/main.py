@@ -49,6 +49,15 @@ async def main() -> None:
     dp.include_router(settings_router)
     dp.include_router(translation_router)
 
+    # Register Telegram native command menu
+    from aiogram.types import BotCommand
+    await bot.set_my_commands([
+        BotCommand(command="settings", description="⚙️ Open settings (Languages, Engines, API keys)"),
+        BotCommand(command="start", description="🚀 Start bot & view current preferences"),
+        BotCommand(command="help", description="📖 Help & Supported providers guide"),
+    ])
+    logger.info("Bot commands registered in Telegram menu.")
+
     logger.info("Bot routers registered. Starting long polling...")
     try:
         # Drop pending updates to avoid processing backlog

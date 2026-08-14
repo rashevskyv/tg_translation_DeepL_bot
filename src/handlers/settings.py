@@ -13,6 +13,7 @@ from src.keyboards.inline import (
     get_provider_key_action_keyboard,
     get_cancel_keyboard,
 )
+from src.keyboards.reply import get_main_reply_keyboard
 
 settings_router = Router(name="settings")
 
@@ -37,10 +38,17 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         f"⚙️ <b>Current Settings:</b>\n"
         f"• Target Language: <code>{user_settings.target_language}</code>\n"
         f"• Active Model/Engine: <code>{provider_title}</code>\n\n"
-        "Use /settings to configure target language, switch engines, or provide your personal API keys."
+        "Tap <b>⚙️ Settings</b> on the bottom keyboard or use /settings to configure options."
     )
+    # First, send welcome with permanent reply keyboard attached
     await message.answer(
         welcome_text,
+        parse_mode="HTML",
+        reply_markup=get_main_reply_keyboard(),
+    )
+    # Then show interactive settings inline keyboard
+    await message.answer(
+        "⚙️ <b>Quick Configuration Menu:</b>",
         parse_mode="HTML",
         reply_markup=get_settings_keyboard(
             user_settings.target_language,
@@ -49,15 +57,14 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     )
 
 
-@settings_router.message(Command("help"))
+@settings_router.message(Command("help") | F.text.in_({"ℹ️ Help", "ℹ️ Допомога", "Help", "Допомога"}))
 async def cmd_help(message: Message, state: FSMContext) -> None:
     await state.clear()
     help_text = (
         "📖 <b>Translation Bot Help & Usage</b>\n\n"
-        "<b>Commands:</b>\n"
-        "/start - Start or restart the bot\n"
-        "/settings - Configure target language, active model, and API keys\n"
-        "/help - Display this help guide\n\n"
+        "<b>Navigation & Controls:</b>\n"
+        "• Tap <b>⚙️ Settings</b> on the keyboard below (or send /settings)\n"
+        "• Send any text to immediately receive a translation\n\n"
         "<b>Supported Engines:</b>\n"
         "• <b>DeepL:</b> High precision neural translation\n"
         "• <b>OpenAI:</b> Fast GPT-4o-mini translation\n"
@@ -67,10 +74,10 @@ async def cmd_help(message: Message, state: FSMContext) -> None:
         "<b>One-Click Copy:</b>\n"
         "Every translation is sent in a code box. Simply tap/click on it to instantly copy it to your clipboard!"
     )
-    await message.answer(help_text, parse_mode="HTML")
+    await message.answer(help_text, parse_mode="HTML", reply_markup=get_main_reply_keyboard())
 
 
-@settings_router.message(Command("settings"))
+@settings_router.message(Command("settings") | F.text.in_({"⚙️ Settings", "⚙️ Налаштування", "Settings", "Налаштування"}))
 async def cmd_settings(message: Message, state: FSMContext) -> None:
     await state.clear()
     user_id = message.from_user.id
@@ -87,6 +94,7 @@ async def cmd_settings(message: Message, state: FSMContext) -> None:
             user_settings.selected_provider,
         ),
     )
+
 
 
 @settings_router.callback_query(F.data == "open_main_settings")
