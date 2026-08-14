@@ -5,6 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
 from src.config import PROVIDERS_INFO, SUPPORTED_PROVIDERS
 from src.database.db import db_manager
+from src.services.language_normalizer import normalize_language
 from src.keyboards.inline import (
     get_settings_keyboard,
     get_providers_keyboard,
@@ -135,27 +136,43 @@ async def callback_set_target_language(query: CallbackQuery, state: FSMContext) 
 
 @settings_router.message(SettingsStates.waiting_for_target_language)
 async def process_target_language_input(message: Message, state: FSMContext) -> None:
-    new_lang = message.text.strip() if message.text else ""
-    if not new_lang or len(new_lang) < 2 or len(new_lang) > 40:
+    raw_lang = message.text.strip() if message.text else ""
+    if not raw_lang or len(raw_lang) < 2 or len(raw_lang) > 60:
         await message.answer(
-            "⚠️ Invalid language name. Please enter a valid language (e.g., 'English', 'German', 'pl').",
+            "⚠️ Invalid language name. Please enter a valid language (e.g., 'Португальська', 'English', 'German', 'pl').",
             reply_markup=get_cancel_keyboard(),
         )
         return
 
     user_id = message.from_user.id
-    await db_manager.set_target_language(user_id, new_lang)
+    # Get user's custom OpenAI key or system key for resolving complex/arbitrary language names
+    openai_key = await db_manager.get_effective_api_key(user_id, "openai")
+    
+    # Normalize language via comprehensive dictionary + OpenAI AI fallback
+    lang_info = await normalize_language(raw_lang, openai_api_key=openai_key)
+    
+    await db_manager.set_target_language(user_id, lang_info.canonical_name)
     await state.clear()
 
     user_settings = await db_manager.get_user_settings(user_id)
+    
+    if lang_info.deepl_target_code:
+        lang_note = f"<code>{lang_info.canonical_name}</code> <i>(DeepL Code: <code>{lang_info.deepl_target_code}</code>)</i>"
+    else:
+        lang_note = (
+            f"<code>{lang_info.canonical_name}</code>\n"
+            f"<i>ℹ️ Note: Supported via OpenAI, Gemini, Qwen, and DeepSeek. (Not available in DeepL).</i>"
+        )
+
     await message.answer(
-        f"✅ <b>Target language successfully updated to:</b> <code>{user_settings.target_language}</code>",
+        f"✅ <b>Target language successfully updated to:</b>\n{lang_note}",
         parse_mode="HTML",
         reply_markup=get_settings_keyboard(
             user_settings.target_language,
             user_settings.selected_provider,
         ),
     )
+
 
 
 # --- Model / Provider Selection ---

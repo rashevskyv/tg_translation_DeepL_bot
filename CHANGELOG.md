@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1] - 2026-08-14
+
+### Added
+- **Intelligent Multilingual Normalizer (`src/services/language_normalizer.py`):**
+  - High-coverage local dictionary supporting Ukrainian language names (`Португальська`, `Німецька`, `Іспанська`, `Польська`, `Французька`, etc.) mapped directly to standardized English canonical names and official DeepL codes (`PT-PT`, `DE`, `ES`, `PL`, `FR`, etc.).
+  - AI-assisted language resolution fallback using **OpenAI API** with structured JSON output for arbitrary or exotic language queries in any script.
+- **Enhanced Test Coverage:**
+  - Added unit test suite `tests/test_normalizer.py` validating Ukrainian language queries, ISO codes, and DeepL mapping.
+
+### Fixed
+- **DeepL 400 Bad Request Error (`target_lang not supported`):**
+  - Resolved invalid slicing of Cyrillic text when mapping user-entered language names to DeepL target codes.
+  - Added informative validation error suggesting switching to LLM engines (OpenAI, Gemini, DeepSeek, Qwen) when a language unsupported by DeepL is selected.
+- **Settings UI Polish:**
+  - Settings now cleanly displays the canonical English language title alongside the official DeepL code upon setting target language.
+
+---
+
 ## [0.1.0] - 2026-08-14
 
 ### Added
@@ -26,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Final translation delivered inside code formatting tags (`<pre><code>...</code></pre>`), enabling instant one-click copy to clipboard in Telegram clients.
 - **Interactive In-Chat Settings GUI (`/settings`):**
   - Interactive Inline keyboard navigation for configuring target language, switching active model, and managing API keys.
-  - FSM text input for choosing any custom target language (e.g., `German`, `Polish`, `es`, `English`).
+  - FSM text input for choosing any custom target language.
   - Per-user API key management with instant auto-deletion of user messages containing sensitive keys from chat history.
 - **Storage & Security:**
   - Local asynchronous SQLite storage (`aiosqlite`) storing user preferences and encrypted/isolated personal API keys.

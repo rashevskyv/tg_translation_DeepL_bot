@@ -19,7 +19,7 @@ A modern, high-performance, asynchronous Telegram bot for automated bidirectiona
   - For LLM providers, translations stream directly to the chat with throttled updates to respect Telegram rate limits.
   - Once translation completes, the intermediate stream message is deleted, and the final translation is delivered in a code block (`<pre><code>`), enabling **instant one-click copy to clipboard**.
 - **Interactive In-Chat Settings GUI (`/settings`):**
-  - **Set Target Language:** Click the button and type your target language (e.g., `English`, `German`, `pl`, `es`).
+  - **Multilingual Target Language Input:** Type the target language in any language or format (e.g., `Португальська`, `Portuguese`, `Німецька`, `German`, `pl`, `es`). The bot uses an integrated normalizer with OpenAI resolution to match the exact canonical English name and official DeepL code (`PT-PT`, `DE`, `PL`, etc.).
   - **Switch Active Engine:** Choose any supported provider via inline buttons.
   - **Manage API Keys:** Set, view (masked), or delete personal API keys directly inside the chat.
 - **Privacy & Security:**
