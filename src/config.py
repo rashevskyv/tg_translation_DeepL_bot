@@ -40,39 +40,36 @@ PROVIDERS_INFO: Dict[str, Dict[str, str]] = {
         "description": "High-accuracy neural machine translation (DeepL API)",
         "supports_streaming": "false",
     },
-    "gemini_lite": {
-        "name": "Gemini 3.5 Flash Lite",
-        "model": "google/gemini-3.5-flash-lite",
+    "gemini_flash": {
+        "name": "Gemini 2.5 Flash",
+        "model": "google/gemini-2.5-flash",
         "key_type": "openrouter",
-        "description": "Ultra-fast low-latency translation via OpenRouter",
+        "description": "Intelligent multilingual model via OpenRouter",
         "supports_streaming": "true",
     },
-    "gemini_flash": {
-        "name": "Gemini 3.7 Flash",
-        "model": "google/gemini-3.7-flash",
+    "gemini_lite": {
+        "name": "Gemini 2.5 Flash Lite",
+        "model": "google/gemini-2.5-flash-lite",
         "key_type": "openrouter",
-        "description": "Next-gen intelligent multimodal translation via OpenRouter",
+        "description": "Ultra-fast low-latency model via OpenRouter",
         "supports_streaming": "true",
     },
     "openai_luna": {
-        "name": "OpenAI GPT-5.6 Luna",
-        "model": "openai/gpt-5.6-luna",
+        "name": "OpenAI GPT-4o Mini",
+        "model": "openai/gpt-4o-mini",
         "key_type": "openrouter",
-        "description": "State-of-the-art GPT translation via OpenRouter",
+        "description": "Advanced GPT model via OpenRouter",
         "supports_streaming": "true",
     },
-    "deepseek_flash": {
-        "name": "DeepSeek V4 Flash",
-        "model": "deepseek/deepseek-v4-flash-0731",
+    "deepseek_v4": {
+        "name": "DeepSeek Chat",
+        "model": "deepseek/deepseek-chat",
         "key_type": "openrouter",
-        "description": "High efficiency DeepSeek V4 translation via OpenRouter",
+        "description": "Efficient multilingual model via OpenRouter",
         "supports_streaming": "true",
     },
 }
 
 SUPPORTED_PROVIDERS: List[str] = list(PROVIDERS_INFO.keys())
-
-# Ensure base directories exist
-Path("data").mkdir(parents=True, exist_ok=True)
 
 settings = Settings()

@@ -29,7 +29,7 @@ class OpenRouterProvider(BaseTranslationProvider):
             api_key=api_key.strip(),
             base_url=self.base_url,
             default_headers={
-                "HTTP-Referer": "https://github.com/your-username/tg_translation_DeepL_bot",
+                "HTTP-Referer": "https://github.com/rashevskyv/tg_translation_DeepL_bot",
                 "X-Title": "Telegram Translation Bot",
             },
         )
@@ -44,13 +44,6 @@ class OpenRouterProvider(BaseTranslationProvider):
         client = self._get_client(api_key)
         prompt = SYSTEM_PROMPT.format(target_lang=target_lang)
 
-        # Enforce non-thinking mode where applicable
-        extra_body = {
-            "reasoning": {
-                "effort": "none"
-            }
-        }
-
         response = await client.chat.completions.create(
             model=self.model_id,
             messages=[
@@ -58,9 +51,9 @@ class OpenRouterProvider(BaseTranslationProvider):
                 {"role": "user", "content": text},
             ],
             temperature=0.2,
-            extra_body=extra_body,
         )
-        return response.choices[0].message.content or ""
+        content = response.choices[0].message.content or ""
+        return content.strip()
 
     async def translate_stream(
         self,
@@ -72,13 +65,6 @@ class OpenRouterProvider(BaseTranslationProvider):
         client = self._get_client(api_key)
         prompt = SYSTEM_PROMPT.format(target_lang=target_lang)
 
-        # Enforce non-thinking mode where applicable
-        extra_body = {
-            "reasoning": {
-                "effort": "none"
-            }
-        }
-
         stream = await client.chat.completions.create(
             model=self.model_id,
             messages=[
@@ -87,7 +73,6 @@ class OpenRouterProvider(BaseTranslationProvider):
             ],
             temperature=0.2,
             stream=True,
-            extra_body=extra_body,
         )
 
         async for chunk in stream:

@@ -14,29 +14,31 @@ class AssistantTurnResult(NamedTuple):
     approved_source_text: Optional[str]  # Final agreed-upon source text to send to translator engine
 
 
-ASSISTANT_SYSTEM_PROMPT = """You are an expert bilingual writing and pre-translation assistant.
+ASSISTANT_SYSTEM_PROMPT = """You are an expert bilingual writing, context-clarification, and pre-translation assistant.
 The user is preparing a message to be translated from {source_lang} to {target_lang}.
 
-CORE CLASSIFICATION RULE (INSTRUCTION VS TRANSLATION):
-1. **Instruction to Assistant:**
-   - Whenever the user asks you to compose, write, draft, help, adjust tone, add sarcasm, humor, formality, or asks a question (e.g. "напиши...", "склади...", "зроби з підйобом...", "придумай привітання...", "допоможи написати...", "як сказати...", "перефразуй...", "хочу відповісти..."):
-     YOU MUST TREAT THIS AS AN ASSISTANCE TASK.
-     Draft 2-3 creative, well-tailored text options in Ukrainian with explanations of nuances and tone, and ask the user which version they prefer to translate.
-     Respond with:
+CORE OPERATING INSTRUCTIONS (THINKING & ASSISTANCE ENABLED):
+1. **Instruction vs Direct Translation Classification:**
+   - Whenever the user sends a prompt, instruction, command, question, or request (e.g., "напиши...", "склади...", "зроби з підйобом...", "придумай...", "допоможи...", "перефразуй...", "як сказати...", "хочу відповісти..."):
+     YOU MUST ACT AS A CREATIVE & CONSULTATIVE ASSISTANT.
+     Analyze the tone, humor, sarcasm, formality, and context deeply.
+     Draft 2-3 distinct, tailored text options in Ukrainian with clear explanations of their nuances and tone.
+     Ask the user which variant they prefer to proceed with for translation.
+     Respond with JSON:
      {{
        "status": "clarifying",
-       "assistant_message": "<Your helpful response, drafted text variants, and tone options in Ukrainian>",
+       "assistant_message": "<Your helpful response, drafted text options, and explanations in Ukrainian>",
        "approved_source_text": null
      }}
 
 2. **DOUBT BIAS:**
-   - If you have ANY doubt whether the user's message is an instruction to you or direct translation text:
-     ALWAYS treat it as an instruction/assistance request (`status: "clarifying"`). NEVER translate prompt instructions literally!
+   - If there is ANY doubt whether the message is a prompt/instruction to you vs direct text for translation:
+     ALWAYS treat it as an instruction/assistance request (`status: "clarifying"`). NEVER translate user prompts literally!
 
 3. **Approval for Translation:**
    - Return `status: "ready"` ONLY when:
-     a) The user approves a drafted option (e.g. "перекладай 1-й варіант", "так, перекладай", "чудово, відправляй", "підходить", "давай"), OR
-     b) The user's input is a completely unambiguous, straightforward declarative message intended directly for the recipient without any prompts, commands, or questions to the assistant.
+     a) The user clearly selects or approves a drafted option (e.g. "перекладай 1-й варіант", "так, перекладай", "чудово, відправляй", "підходить", "давай"), OR
+     b) The user submits a completely unambiguous, straightforward declarative message intended directly for the recipient without any prompts, commands, or questions to the assistant.
    - When ready, synthesize the final agreed-upon Ukrainian text in `approved_source_text`:
      {{
        "status": "ready",
@@ -44,7 +46,7 @@ CORE CLASSIFICATION RULE (INSTRUCTION VS TRANSLATION):
        "approved_source_text": "<The definitive approved source text in {source_lang}>"
      }}
 
-CRITICAL: Respond ONLY with valid JSON strictly adhering to the schema. No markdown code fences, no extra text.
+CRITICAL: Respond ONLY with valid JSON strictly adhering to the schema. No markdown code blocks, no extra commentary outside JSON.
 """
 
 
@@ -59,8 +61,9 @@ class AssistantService:
     ) -> AssistantTurnResult:
         """
         Executes a turn in the assistant intent-clarification and collaborative writing dialogue.
+        Reasoning / deep context analysis is enabled for optimal assistance quality.
         """
-        model_id = PROVIDERS_INFO.get(provider_name, {}).get("model", "google/gemini-3.7-flash")
+        model_id = PROVIDERS_INFO.get(provider_name, {}).get("model", "google/gemini-2.5-flash")
         client = AsyncOpenAI(
             api_key=api_key.strip(),
             base_url="https://openrouter.ai/api/v1",
@@ -78,11 +81,11 @@ class AssistantService:
         messages = [{"role": "system", "content": system_instruction}] + conversation_history
 
         try:
+            # Reasoning is allowed in assistant mode for deep contextual understanding
             response = await client.chat.completions.create(
                 model=model_id,
                 messages=messages,
-                temperature=0.3,
-                extra_body={"reasoning": {"effort": "none"}},
+                temperature=0.4,
             )
             raw_content = response.choices[0].message.content or ""
             clean_json = re.sub(r"^```(?:json)?\s*", "", raw_content.strip(), flags=re.IGNORECASE)
