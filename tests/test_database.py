@@ -78,3 +78,33 @@ async def test_user_api_keys_crud(temp_db):
     await temp_db.delete_user_api_key(user_id, "deepl")
     key_after_del = await temp_db.get_user_api_key(user_id, "deepl")
     assert key_after_del is None
+
+
+@pytest.mark.asyncio
+async def test_assistant_history_crud(temp_db):
+    user_id = 777
+    # Initially empty
+    hist = await temp_db.get_assistant_history(user_id)
+    assert hist == []
+
+    # Add messages
+    await temp_db.add_assistant_message(user_id, "user", "Допоможи написати листа")
+    await temp_db.add_assistant_message(user_id, "assistant", "Який саме тон листа вам потрібен?")
+    
+    hist = await temp_db.get_assistant_history(user_id)
+    assert len(hist) == 2
+    assert hist[0] == {"role": "user", "content": "Допоможи написати листа"}
+    assert hist[1] == {"role": "assistant", "content": "Який саме тон листа вам потрібен?"}
+
+    # Add 35 messages to verify 30-message limit
+    for i in range(35):
+        await temp_db.add_assistant_message(user_id, "user", f"msg {i}")
+
+    hist_30 = await temp_db.get_assistant_history(user_id)
+    assert len(hist_30) == 30
+    assert hist_30[-1]["content"] == "msg 34"
+
+    # Clear history
+    await temp_db.clear_assistant_history(user_id)
+    assert await temp_db.get_assistant_history(user_id) == []
+

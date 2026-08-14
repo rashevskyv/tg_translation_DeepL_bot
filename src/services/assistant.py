@@ -10,34 +10,39 @@ logger = logging.getLogger(__name__)
 
 class AssistantTurnResult(NamedTuple):
     status: str  # "ready" (approved for translation) or "clarifying" (needs more conversation)
-    assistant_message: Optional[str]  # Question or reply to the user in Ukrainian
+    assistant_message: Optional[str]  # Question, drafting suggestions, or reply to the user in Ukrainian
     approved_source_text: Optional[str]  # Final agreed-upon source text to send to translator engine
 
 
-ASSISTANT_SYSTEM_PROMPT = """You are an expert pre-translation assistant.
-The user wants to prepare a message to be translated from {source_lang} to {target_lang}.
-Your task is to analyze the user's input, context, intended tone (formal vs informal), slang, idioms, or any potential ambiguities:
+ASSISTANT_SYSTEM_PROMPT = """You are an expert conversational pre-translation and copywriting assistant.
+The user is preparing a message or text to be translated from {source_lang} to {target_lang}.
 
-OPERATING RULES:
-1. If the message contains ambiguity, slang/idioms, vague pronouns, multiple potential interpretations, or tone nuances:
-   Engage in a helpful conversation with the user in Ukrainian. Ask specific clarifying questions or offer options to pin down the exact intended meaning.
-   Respond strictly with JSON:
-   {{
-     "status": "clarifying",
-     "assistant_message": "<Your polite, clear question or explanation in Ukrainian>",
-     "approved_source_text": null
-   }}
+YOUR CAPABILITIES AND RESPONSIBILITIES:
+1. **Collaborative Writing & Drafting:**
+   - Help the user compose, rephrase, expand, or adjust the emotional coloring and tone of any text (e.g. formal, friendly, polite, sarcastic, humorous, business, diplomatic, persuasive).
+   - If the user asks for help like "допоможи написати листа", "зроби це більш ввічливим", "підбери краще формулювання", "напиши привітання", propose options and discuss ideas in Ukrainian.
+2. **Ambiguity & Nuance Clarification:**
+   - If the user provides a message with double meanings, slang, vague context, or multiple styles, ask clarifying questions in Ukrainian.
+3. **Dialogue & Memory Awareness:**
+   - You have access to the full conversation history. Keep context across turns naturally.
+4. **Final Approval & Translation Trigger:**
+   - When the text is fully agreed upon, perfected, and approved by the user (e.g., the user says "так, перекладай", "чудово", "підходить", "давай", or when simple input was already 100% crystal-clear without needing changes):
+     Synthesize the definitive, high-quality message in {source_lang} to be translated.
+     Respond with JSON:
+     {{
+       "status": "ready",
+       "assistant_message": null,
+       "approved_source_text": "<The definitive, approved text in {source_lang}>"
+     }}
+   - If you are still discussing, proposing drafts, asking questions, or awaiting user feedback:
+     Respond with JSON:
+     {{
+       "status": "clarifying",
+       "assistant_message": "<Your helpful response, drafted text options, or questions in Ukrainian>",
+       "approved_source_text": null
+     }}
 
-2. When the user's meaning is 100% clear (either immediately if simple and unambiguous, or once clarified through dialogue):
-   Synthesize the final definitive, polished source-language text that accurately conveys all agreed meaning and tone.
-   Respond strictly with JSON:
-   {{
-     "status": "ready",
-     "assistant_message": null,
-     "approved_source_text": "<The definitive, unambiguous version in {source_lang}>"
-   }}
-
-Output strictly valid JSON matching this schema without any markdown wrapping or reasoning.
+CRITICAL: Respond ONLY with valid JSON strictly adhering to the schema above. No markdown code blocks, no extraneous text.
 """
 
 
@@ -51,13 +56,7 @@ class AssistantService:
         api_key: str,
     ) -> AssistantTurnResult:
         """
-        Executes a turn in the assistant intent-clarification dialogue.
-        Args:
-            conversation_history: List of {"role": "user"|"assistant", "content": "..."}
-            source_lang: e.g. "Ukrainian"
-            target_lang: e.g. "French"
-            provider_name: e.g. "gemini_flash"
-            api_key: OpenRouter API key
+        Executes a turn in the assistant intent-clarification and collaborative writing dialogue.
         """
         model_id = PROVIDERS_INFO.get(provider_name, {}).get("model", "google/gemini-3.7-flash")
         client = AsyncOpenAI(
@@ -80,7 +79,7 @@ class AssistantService:
             response = await client.chat.completions.create(
                 model=model_id,
                 messages=messages,
-                temperature=0.2,
+                temperature=0.3,
                 extra_body={"reasoning": {"effort": "none"}},
             )
             raw_content = response.choices[0].message.content or ""
@@ -105,14 +104,14 @@ class AssistantService:
                     approved_source_text=approved_text.strip() if approved_text else None,
                 )
         except Exception as e:
-            logger.warning(f"Assistant dialogue turn failed: {e}")
+            logger.warning(f"Assistant dialogue turn error: {e}")
 
-        # Fallback: assume ready with original input
-        first_user_text = conversation_history[0]["content"] if conversation_history else ""
+        # Fallback
+        last_user_text = next((m["content"] for m in reversed(conversation_history) if m["role"] == "user"), "")
         return AssistantTurnResult(
             status="ready",
             assistant_message=None,
-            approved_source_text=first_user_text,
+            approved_source_text=last_user_text,
         )
 
 

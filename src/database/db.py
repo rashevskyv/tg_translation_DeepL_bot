@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 import aiosqlite
 from pydantic import BaseModel
 from src.config import settings, SUPPORTED_PROVIDERS, PROVIDERS_INFO
@@ -46,6 +46,23 @@ class DatabaseManager:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id, provider)
                 );
+                """
+            )
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS assistant_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
+            await db.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_assistant_user_created 
+                ON assistant_messages(user_id, created_at);
                 """
             )
 
@@ -239,6 +256,77 @@ class DatabaseManager:
             "openai": settings.openai_api_key,
         }
         return fallback_map.get(provider) or None
+
+    # --- Assistant Conversation History (Last 30 messages or 2 hours) ---
+
+    async def add_assistant_message(self, user_id: int, role: str, content: str) -> None:
+        """Stores a message turn in assistant history, pruning messages > 2h or > 30 entries."""
+        async with aiosqlite.connect(self.db_path) as db:
+            # 1. Insert new message
+            await db.execute(
+                """
+                INSERT INTO assistant_messages (user_id, role, content, created_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                (user_id, role, content),
+            )
+
+            # 2. Clean messages older than 2 hours
+            await db.execute(
+                """
+                DELETE FROM assistant_messages
+                WHERE user_id = ? AND created_at < datetime('now', '-2 hours')
+                """,
+                (user_id,),
+            )
+
+            # 3. Limit to the latest 30 messages
+            await db.execute(
+                """
+                DELETE FROM assistant_messages
+                WHERE user_id = ? AND id NOT IN (
+                    SELECT id FROM assistant_messages
+                    WHERE user_id = ?
+                    ORDER BY id DESC
+                    LIMIT 30
+                )
+                """,
+                (user_id, user_id),
+            )
+            await db.commit()
+
+    async def get_assistant_history(self, user_id: int) -> List[Dict[str, str]]:
+        """Fetches up to 30 recent messages within the last 2 hours for user_id."""
+        async with aiosqlite.connect(self.db_path) as db:
+            # First prune expired
+            await db.execute(
+                """
+                DELETE FROM assistant_messages
+                WHERE user_id = ? AND created_at < datetime('now', '-2 hours')
+                """,
+                (user_id,),
+            )
+            await db.commit()
+
+            async with db.execute(
+                """
+                SELECT role, content FROM (
+                    SELECT id, role, content FROM assistant_messages
+                    WHERE user_id = ?
+                    ORDER BY id DESC
+                    LIMIT 30
+                ) ORDER BY id ASC
+                """,
+                (user_id,),
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [{"role": row[0], "content": row[1]} for row in rows]
+
+    async def clear_assistant_history(self, user_id: int) -> None:
+        """Clears all conversation memory for user_id."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM assistant_messages WHERE user_id = ?", (user_id,))
+            await db.commit()
 
 
 db_manager = DatabaseManager()

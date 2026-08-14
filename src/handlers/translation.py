@@ -3,6 +3,7 @@ import html
 import time
 from typing import Optional
 from aiogram import Router, F
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
@@ -24,12 +25,12 @@ def _get_error_settings_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def _get_clarification_keyboard() -> InlineKeyboardMarkup:
+def _get_assistant_turn_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⚡ Translate As Is", callback_data="force_translate_original"),
-                InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_assistant_dialog"),
+                InlineKeyboardButton(text="⚡ Translate As Is", callback_data="force_translate_draft"),
+                InlineKeyboardButton(text="🗑️ Reset Memory", callback_data="reset_assistant_memory"),
             ]
         ]
     )
@@ -141,95 +142,46 @@ async def _execute_translation(
             )
 
 
-@translation_router.callback_query(F.data == "force_translate_original")
-async def callback_force_translate_original(query: CallbackQuery, state: FSMContext) -> None:
-    data = await state.get_data()
+@translation_router.message(Command("reset"))
+@translation_router.message(Command("clear"))
+async def cmd_reset_assistant_memory(message: Message, state: FSMContext) -> None:
     await state.clear()
-    original_text = data.get("original_text")
-    source_lang = data.get("source_lang", "Ukrainian")
-    target_lang = data.get("target_lang", "English")
-    provider_name = data.get("provider_name", "deepl")
-    user_id = query.from_user.id
+    await db_manager.clear_assistant_history(message.from_user.id)
+    await message.reply("🧹 <i>Assistant memory and conversation history cleared.</i>", parse_mode="HTML")
 
-    if not original_text:
-        await query.answer("No active text.")
+
+@translation_router.callback_query(F.data == "reset_assistant_memory")
+async def callback_reset_assistant_memory(query: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await db_manager.clear_assistant_history(query.from_user.id)
+    await query.message.edit_text("🧹 <i>Assistant memory reset. Starting fresh!</i>", parse_mode="HTML")
+    await query.answer("Memory reset")
+
+
+@translation_router.callback_query(F.data == "force_translate_draft")
+async def callback_force_translate_draft(query: CallbackQuery, state: FSMContext) -> None:
+    user_id = query.from_user.id
+    history = await db_manager.get_assistant_history(user_id)
+    user_settings = await db_manager.get_user_settings(user_id)
+
+    last_user_text = next((m["content"] for m in reversed(history) if m["role"] == "user"), "")
+    if not last_user_text:
+        await query.answer("No message in memory.")
         return
 
-    provider = translation_manager.get_provider(provider_name)
-    api_key = await db_manager.get_effective_api_key(user_id, provider_name)
+    provider = translation_manager.get_provider(user_settings.selected_provider)
+    api_key = await db_manager.get_effective_api_key(user_id, user_settings.selected_provider)
 
     await query.message.edit_reply_markup(reply_markup=None)
     await query.answer()
-    await _execute_translation(query.message, original_text, source_lang, target_lang, provider, api_key)
-
-
-@translation_router.callback_query(F.data == "cancel_assistant_dialog")
-async def callback_cancel_assistant_dialog(query: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    await query.message.edit_text("❌ <i>Clarification dialog cancelled.</i>", parse_mode="HTML")
-    await query.answer()
-
-
-@translation_router.message(SettingsStates.waiting_for_clarification)
-async def handle_clarification_response(message: Message, state: FSMContext) -> None:
-    """Handles multi-turn dialogue with the user until intent is agreed upon."""
-    user_reply = message.text.strip() if message.text else ""
-    if not user_reply:
-        return
-
-    data = await state.get_data()
-    history = data.get("history", [])
-    original_text = data.get("original_text")
-    source_lang = data.get("source_lang", "Ukrainian")
-    target_lang = data.get("target_lang", "English")
-    provider_name = data.get("provider_name", "deepl")
-    assist_provider = data.get("assist_provider", "gemini_flash")
-    user_id = message.from_user.id
-
-    assist_key = await db_manager.get_effective_api_key(user_id, assist_provider)
-    trans_key = await db_manager.get_effective_api_key(user_id, provider_name)
-    trans_provider = translation_manager.get_provider(provider_name)
-
-    # Append user turn to conversation history
-    history.append({"role": "user", "content": user_reply})
-
-    status_msg = await message.reply("🧠 <i>Analyzing clarification...</i>", parse_mode="HTML")
-
-    result = await assistant_service.process_turn(
-        conversation_history=history,
-        source_lang=source_lang,
-        target_lang=target_lang,
-        provider_name=assist_provider,
-        api_key=assist_key,
+    await _execute_translation(
+        query.message,
+        last_user_text,
+        "Ukrainian",
+        user_settings.target_language,
+        provider,
+        api_key,
     )
-
-    try:
-        await status_msg.delete()
-    except Exception:
-        pass
-
-    if result.status == "clarifying" and result.assistant_message:
-        # Continue dialogue
-        history.append({"role": "assistant", "content": result.assistant_message})
-        await state.update_data(history=history)
-
-        dialog_text = (
-            f"💡 <b>Асистент ({assist_provider}):</b>\n\n"
-            f"{html.escape(result.assistant_message)}"
-        )
-        await message.reply(dialog_text, parse_mode="HTML", reply_markup=_get_clarification_keyboard())
-    else:
-        # All agreed -> proceed to translation engine
-        await state.clear()
-        final_source_text = result.approved_source_text or original_text
-        await _execute_translation(
-            message=message,
-            text_to_translate=final_source_text,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            provider=trans_provider,
-            api_key=trans_key,
-        )
 
 
 @translation_router.message(F.text & ~F.text.startswith("/"))
@@ -264,17 +216,22 @@ async def handle_translation_text(message: Message, state: FSMContext) -> None:
         await message.reply(f"⚠️ Error preparing translation: {html.escape(str(e))}")
         return
 
-    # --- Assistant Mode Check ---
+    # --- Assistant Mode with Persistent 30-message / 2-hour Memory ---
     if user_settings.assistant_mode:
         assist_provider = user_settings.assistant_provider
         assist_key = await db_manager.get_effective_api_key(user_id, assist_provider)
 
         if assist_key:
-            status_msg = await message.reply("🧠 <i>Analyzing nuance & intent...</i>", parse_mode="HTML")
-            initial_history = [{"role": "user", "content": input_text}]
+            # 1. Add current turn to database memory
+            await db_manager.add_assistant_message(user_id, "user", input_text)
+
+            # 2. Retrieve conversation history within last 2 hours (up to 30 messages)
+            history = await db_manager.get_assistant_history(user_id)
+
+            status_msg = await message.reply("🧠 <i>Assistant is analyzing context...</i>", parse_mode="HTML")
 
             turn_result = await assistant_service.process_turn(
-                conversation_history=initial_history,
+                conversation_history=history,
                 source_lang=source_lang,
                 target_lang=target_lang,
                 provider_name=assist_provider,
@@ -287,26 +244,18 @@ async def handle_translation_text(message: Message, state: FSMContext) -> None:
                 pass
 
             if turn_result.status == "clarifying" and turn_result.assistant_message:
-                # Enter clarification conversation state
-                initial_history.append({"role": "assistant", "content": turn_result.assistant_message})
-                await state.set_state(SettingsStates.waiting_for_clarification)
-                await state.update_data(
-                    history=initial_history,
-                    original_text=input_text,
-                    source_lang=source_lang,
-                    target_lang=target_lang,
-                    provider_name=provider.name,
-                    assist_provider=assist_provider,
-                )
+                # Save assistant reply to memory
+                await db_manager.add_assistant_message(user_id, "assistant", turn_result.assistant_message)
+
                 dialog_text = (
-                    f"💡 <b>Потрібне уточнення ({source_lang} ➔ {target_lang}):</b>\n\n"
-                    f"{html.escape(turn_result.assistant_message)}\n\n"
-                    f"<i>✍️ Напишіть відповідь для узгодження змісту або оберіть дію:</i>"
+                    f"💡 <b>Асистент ({assist_provider}):</b>\n\n"
+                    f"{html.escape(turn_result.assistant_message)}"
                 )
-                await message.reply(dialog_text, parse_mode="HTML", reply_markup=_get_clarification_keyboard())
+                await message.reply(dialog_text, parse_mode="HTML", reply_markup=_get_assistant_turn_keyboard())
                 return
+
             elif turn_result.status == "ready":
-                # Clear and unambiguous -> send directly to translator engine
+                # Approved text -> dispatch to chosen translator engine
                 final_source_text = turn_result.approved_source_text or input_text
                 await _execute_translation(
                     message=message,

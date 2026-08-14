@@ -7,14 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-08-14
+
+### Added
+- **Persistent Assistant Conversation Memory (`src/database/db.py`):**
+  - Storing conversation history in `assistant_messages` table.
+  - Automatically retains up to **30 recent messages** within a **2-hour sliding window**, pruning older context automatically.
+  - Added `/reset`, `/clear` commands and `[ 🗑️ Reset Memory ]` inline button.
+- **Collaborative Writing & Tone Styling (`src/services/assistant.py`):**
+  - Users can ask the Assistant to draft text, adjust emotional coloring, rewrite messages politely, formally, sarcastically, or persuasively.
+  - Full multi-turn iteration until the user explicitly approves, then seamlessly sends the agreed-upon text to the selected Translator Engine.
+
+---
+
 ## [0.3.2] - 2026-08-14
 
 ### Changed
-- **Multi-Turn Assistant Intent Clarification Dialogue (`src/services/assistant.py`, `src/handlers/translation.py`):**
-  - Assistant model now conducts a full multi-turn conversational dialogue with the user until the exact meaning and nuances are mutually agreed upon.
-  - Separate system prompt for Assistant (dialogue, nuance extraction, agreement) and Translation Engine (pure translation).
-  - Once agreed (or if unambiguous immediately), the Assistant outputs the synthesized approved source text and passes it to the user's selected Translator Engine (DeepL or configured LLM) for final translation.
-  - Added interactive buttons `[ ⚡ Translate As Is ]` and `[ ❌ Cancel ]` during clarification sessions.
+- Multi-turn assistant intent clarification dialogue and separation of assistant vs translation prompts.
 
 ---
 
