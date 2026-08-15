@@ -24,4 +24,4 @@ def test_settings_inline_keyboard():
     kb_assist = get_settings_keyboard("German", "gemini_flash", assistant_mode=True, assistant_provider="openai_luna")
     assist_buttons = [btn.text for row in kb_assist.inline_keyboard for btn in row]
     assert any("Режим: 💡 Режим асистента" in text for text in assist_buttons)
-    assert any("Модель асистента: OpenAI GPT" in text for text in assist_buttons)
+    assert any("Модель асистента: OpenAI GPT-5.6 Luna" in text for text in assist_buttons)

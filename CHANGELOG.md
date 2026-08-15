@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.5] - 2026-08-15
+
+### Changed
+- **Configured Exact Requested Models & Full Settings Localization (`src/config.py`, `src/handlers/settings.py`):**
+  - Updated models: `google/gemini-3.7-flash`, `google/gemini-3.5-flash-lite`, `openai/gpt-5.6-luna`, `deepseek/deepseek-v4-flash-0731`.
+  - Fully translated all remaining settings menu titles and prompts to Ukrainian.
+
+---
+
 ## [0.5.4] - 2026-08-15
 
 ### Changed
-- **Assistant Session Memory Lifecycle Management (`src/database/db.py`, `src/handlers/settings.py`):**
-  - Assistant conversation history is preserved throughout the active assistant session (up to 30 messages).
-  - Memory is automatically cleared as soon as the user switches back to Direct Translation Mode.
+- Assistant session memory persistence and auto-reset upon switching to translator mode.
 
 ---
 
@@ -20,10 +27,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Markdown-to-HTML formatting converter for Telegram bold, italic, and code blocks.
-
----
-
-## [0.5.2] - 2026-08-15
-
-### Changed
-- Recalibrated assistant persona for accurate context understanding and user-driven emotional calibration.
