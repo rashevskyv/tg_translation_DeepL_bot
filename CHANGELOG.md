@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.2] - 2026-08-15
+
+### Added
+- **Native Telegram Blockquotes and Emoji Headers Support (`src/utils/formatter.py`):**
+  - Markdown quotes (`> text`) are automatically grouped and rendered as native Telegram `<blockquote>...</blockquote>` blocks.
+  - Markdown headers (`#`, `##`, `###`, `####`) are styled with clean structured emojis (`📌`, `🔹`, `🔸`, `▫️`) and bold text (`<b>...</b>`).
+  - Cleaned horizontal rules and consecutive line breaks.
+
+---
+
 ## [0.6.1] - 2026-08-15
 
 ### Fixed
-- **Fixed `language_normalizer` and `DEEPL_VALID_TARGET_CODES` Module Exports (`src/services/language_normalizer.py`):**
-  - Resolved `ImportError` on application startup by exporting `language_normalizer` singleton instance and `DEEPL_VALID_TARGET_CODES` validation set.
+- Fixed `language_normalizer` and `DEEPL_VALID_TARGET_CODES` module exports.
 
 ---
 
@@ -19,10 +28,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Integrated high-performance translation models Qwen 3.7 Flash and Mistral Small 3.
-
----
-
-## [0.5.5] - 2026-08-15
-
-### Changed
-- Configured exact latest models and full Ukrainian localization of settings menus.

@@ -17,6 +17,25 @@ def test_markdown_to_telegram_html_code_blocks():
     assert "<code>git pull</code>" in res
 
 
+def test_markdown_to_telegram_html_blockquotes():
+    raw = "> Усі ці три команди разом роблять одну річ:\n> 1. `cd ~/tg`\n> 👉 Зайти в папку"
+    res = markdown_to_telegram_html(raw)
+    assert "<blockquote>" in res
+    assert "</blockquote>" in res
+    assert "&gt;" not in res
+    assert "<code>cd ~/tg</code>" in res
+
+
+def test_markdown_to_telegram_html_headers_and_hr():
+    raw = "### Варіант 1: Пряме пояснення\n\n---\n\n## Підсумок"
+    res = markdown_to_telegram_html(raw)
+    assert "🔸 <b>Варіант 1: Пряме пояснення</b>" in res
+    assert "🔹 <b>Підсумок</b>" in res
+    assert "###" not in res
+    assert "##" not in res
+    assert "---" not in res
+
+
 def test_markdown_to_telegram_html_escaping():
     raw = "Текст з <тегами> & амперсандами **жирний**."
     res = markdown_to_telegram_html(raw)

@@ -1,21 +1,27 @@
 # Журнал змін (Walkthrough)
 
-## Версія: v0.6.1 (Виправлення експорту language_normalizer та DEEPL_VALID_TARGET_CODES)
+## Версія: v0.6.2 (Підтримка цитат <blockquote> та емодзі-заголовків у повідомленнях асистента)
 
 ### Зміни:
-1. **Виправлено імпорт у `src/services/language_normalizer.py`:**
-   - Експортовано екземпляр класу `language_normalizer` (`LanguageNormalizer`) та множину `DEEPL_VALID_TARGET_CODES`.
-   - Усунено помилку `ImportError: cannot import name 'language_normalizer'` при запуску сервісу на сервері.
+1. **Покращення Telegram HTML форматера (`src/utils/formatter.py`):**
+   - **Цитати (Blockquotes):** рядки, що починаються з `> `, автоматично огортаються у валідний Telegram-тег `<blockquote>...</blockquote>` з відображенням нативної вертикальної смуги цитування.
+   - **Заголовки Markdown:**
+     - `# Заголовок` $\rightarrow$ `📌 <b>Заголовок</b>`
+     - `## Заголовок` $\rightarrow$ `🔹 <b>Заголовок</b>`
+     - `### Заголовок` $\rightarrow$ `🔸 <b>Заголовок</b>`
+     - `#### Заголовок` $\rightarrow$ `▫️ <b>Заголовок</b>`
+   - **Горизонтальні розділювачі (`---`):** очищаються та замінюються на правильні відступи.
 
 2. **Тестування:**
-   - Всі 33 тести успішно виконані паралельно (`pytest -n auto`).
+   - Оновлено `tests/test_formatter.py` з тестами для blockquotes та заголовків.
+   - Всі 35 тестів успішно виконані паралельно (`pytest -n auto`).
+
+---
+
+## Версія: v0.6.1 (Виправлення експорту language_normalizer та DEEPL_VALID_TARGET_CODES)
+- Виправлено експорт синглтона.
 
 ---
 
 ## Версія: v0.6.0 (Розширення лінійки моделей: Qwen 3.7 Flash та Mistral Small 3)
-- Інтеграція Qwen 3.7 Flash та Mistral Small 3.
-
----
-
-## Версія: v0.5.5 (Оновлення моделей OpenRouter та повна українізація меню налаштувань)
-- Gemini 3.5/3.7, GPT-5.6 Luna, DeepSeek V4 Flash.
+- Qwen 3.7 Flash та Mistral Small 3.
