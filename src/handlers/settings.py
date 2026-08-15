@@ -273,6 +273,14 @@ async def callback_choose_assistant_provider(query: CallbackQuery, state: FSMCon
     await query.answer()
 
 
+@settings_router.callback_query(F.data == "reset_assistant_memory_settings")
+async def callback_reset_assistant_memory_settings(query: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    user_id = query.from_user.id
+    await db_manager.clear_assistant_history(user_id)
+    await query.answer("🗑️ Пам'ять асистента успішно очищено!", show_alert=True)
+
+
 # --- Translator Engine Selection ---
 
 @settings_router.callback_query(F.data == "select_provider_menu")

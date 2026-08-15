@@ -41,6 +41,12 @@ def get_settings_keyboard(
                 callback_data="select_assistant_provider_menu",
             )
         ])
+        keyboard.append([
+            InlineKeyboardButton(
+                text="🗑️ Скинути пам'ять",
+                callback_data="reset_assistant_memory_settings",
+            )
+        ])
 
     keyboard.extend([
         [

@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.4] - 2026-08-15
+
+### Added
+- **"Reset Memory" Button in Settings GUI (`src/keyboards/inline.py`, `src/handlers/settings.py`):**
+  - When Assistant Mode is enabled, added dedicated `🗑️ Скинути пам'ять` button inside `/settings` with instant alert confirmation and session memory reset.
+
+---
+
 ## [0.6.3] - 2026-08-15
 
 ### Changed
-- **Back-Translation Verification in Native Blockquote (`src/handlers/translation.py`):**
-  - Styled the verification back-translation text inside native Telegram `<blockquote>...</blockquote>` for enhanced readability and clear distinction from the primary translation code block.
+- Back-translation verification formatted in native Telegram `<blockquote>...</blockquote>`.
 
 ---
 
@@ -19,10 +26,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Native Telegram Blockquotes and Emoji Headers Support in Assistant responses.
-
----
-
-## [0.6.1] - 2026-08-15
-
-### Fixed
-- Fixed `language_normalizer` and `DEEPL_VALID_TARGET_CODES` module exports.

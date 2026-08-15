@@ -25,3 +25,4 @@ def test_settings_inline_keyboard():
     assist_buttons = [btn.text for row in kb_assist.inline_keyboard for btn in row]
     assert any("Режим: 💡 Режим асистента" in text for text in assist_buttons)
     assert any("Модель асистента: OpenAI GPT-5.6 Luna" in text for text in assist_buttons)
+    assert any("Скинути пам'ять" in text for text in assist_buttons)
