@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.3] - 2026-08-15
+
+### Fixed
+- **Markdown-to-HTML Formatting Converter (`src/utils/formatter.py`, `src/handlers/translation.py`):**
+  - Resolved raw Markdown asterisks (`**bold**`, `*italic*`, ````code````) in Telegram messages by parsing and transforming them to valid Telegram HTML (`<b>...</b>`, `<i>...</i>`, `<pre><code>...</code></pre>`).
+  - Added comprehensive test coverage in `tests/test_formatter.py`.
+
+---
+
 ## [0.5.2] - 2026-08-15
 
 ### Changed
-- **Assistant Prompt Recalibration for Intent & Tone Control (`src/services/assistant.py`):**
-  - Shifted assistant persona from generic wit to accurate context understanding and user-driven emotional calibration.
-  - Assistant analyzes context, clarifies missing details, and adjusts text tone on demand (from calm/neutral or diplomatic to threatening, firm, or sarcastic).
-  - Strictly calls `translate_text` once user confirms satisfaction with the drafted formulation.
+- Recalibrated assistant persona for accurate context understanding and user-driven emotional calibration.
 
 ---
 
@@ -21,10 +27,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Full Ukrainian localization of all bot interface buttons.
-
----
-
-## [0.5.0] - 2026-08-15
-
-### Added
-- Tool Calling Architecture for Assistant (`translate_text` callable tool).

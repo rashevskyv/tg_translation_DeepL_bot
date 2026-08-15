@@ -13,6 +13,7 @@ from src.services.manager import translation_manager
 from src.services.assistant import assistant_service
 from src.services.providers.base import BaseTranslationProvider
 from src.handlers.settings import SettingsStates
+from src.utils.formatter import markdown_to_telegram_html
 
 translation_router = Router(name="translation")
 
@@ -275,9 +276,10 @@ async def handle_translation_text(message: Message, state: FSMContext) -> None:
                 # Save assistant reply to memory
                 await db_manager.add_assistant_message(user_id, "assistant", turn_result.assistant_message)
 
+                formatted_msg = markdown_to_telegram_html(turn_result.assistant_message)
                 dialog_text = (
                     f"💡 <b>Асистент ({assist_provider}):</b>\n\n"
-                    f"{html.escape(turn_result.assistant_message)}"
+                    f"{formatted_msg}"
                 )
                 await message.reply(dialog_text, parse_mode="HTML", reply_markup=_get_assistant_turn_keyboard())
                 return
