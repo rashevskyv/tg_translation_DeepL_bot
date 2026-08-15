@@ -1,6 +1,6 @@
 [project]
 name = "tg-translation-deepl-bot"
-version = "0.4.2"
+version = "0.5.0"
 description = "Universal Telegram translation bot with DeepL and LLM multi-provider support, per-user settings, and real-time streaming"
 authors = [{ name = "Developer" }]
 requires-python = ">=3.10"

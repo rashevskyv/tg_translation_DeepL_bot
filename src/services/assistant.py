@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from typing import Dict, List, NamedTuple, Optional
 from openai import AsyncOpenAI
 from src.config import PROVIDERS_INFO
@@ -9,44 +8,58 @@ logger = logging.getLogger(__name__)
 
 
 class AssistantTurnResult(NamedTuple):
-    status: str  # "ready" (approved for translation) or "clarifying" (needs more conversation)
-    assistant_message: Optional[str]  # Question, drafting suggestions, or reply to the user in Ukrainian
-    approved_source_text: Optional[str]  # Final agreed-upon source text to send to translator engine
+    status: str  # "ready" (invoked translate_text tool) or "clarifying" (conversing/drafting with user)
+    assistant_message: Optional[str]  # Text response from assistant to user
+    approved_source_text: Optional[str]  # Text passed to translate_text tool to be translated
 
 
-ASSISTANT_SYSTEM_PROMPT = """You are an expert bilingual writing, context-clarification, and pre-translation assistant.
-The user is preparing a message to be translated from {source_lang} to {target_lang}.
+TRANSLATE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "translate_text",
+        "description": (
+            "Call this tool to perform the final translation when the message/thought is formulated, "
+            "agreed upon, or when the user explicitly asks to translate the chosen text."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "source_text": {
+                    "type": "string",
+                    "description": "The finalized, agreed-upon source text in source language to be translated.",
+                },
+                "tone_notes": {
+                    "type": "string",
+                    "description": "Optional notes on style or emotional tone.",
+                },
+            },
+            "required": ["source_text"],
+        },
+    },
+}
 
-CORE OPERATING INSTRUCTIONS (THINKING & ASSISTANCE ENABLED):
-1. **Instruction vs Direct Translation Classification:**
-   - Whenever the user sends a prompt, instruction, command, question, or request (e.g., "напиши...", "склади...", "зроби з підйобом...", "придумай...", "допоможи...", "перефразуй...", "як сказати...", "хочу відповісти..."):
-     YOU MUST ACT AS A CREATIVE & CONSULTATIVE ASSISTANT.
-     Analyze the tone, humor, sarcasm, formality, and context deeply.
-     Draft 2-3 distinct, tailored text options in Ukrainian with clear explanations of their nuances and tone.
-     Ask the user which variant they prefer to proceed with for translation.
-     Respond with JSON:
-     {{
-       "status": "clarifying",
-       "assistant_message": "<Your helpful response, drafted text options, and explanations in Ukrainian>",
-       "approved_source_text": null
-     }}
 
-2. **DOUBT BIAS:**
-   - If there is ANY doubt whether the message is a prompt/instruction to you vs direct text for translation:
-     ALWAYS treat it as an instruction/assistance request (`status: "clarifying"`). NEVER translate user prompts literally!
+ASSISTANT_SYSTEM_PROMPT = """Ти — персональний інтелектуальний асистент користувача для формування думок, копірайтингу та перекладу.
+Твоя мета — допомогти користувачеві розібратися з ідеями, скласти потрібний текст, підібрати емоційне забарвлення, тон (діловий, дружній, саркастичний, підйобний, ввічливий тощо), і коли все готово — викликати інструмент перекладача.
 
-3. **Approval for Translation:**
-   - Return `status: "ready"` ONLY when:
-     a) The user clearly selects or approves a drafted option (e.g. "перекладай 1-й варіант", "так, перекладай", "чудово, відправляй", "підходить", "давай"), OR
-     b) The user submits a completely unambiguous, straightforward declarative message intended directly for the recipient without any prompts, commands, or questions to the assistant.
-   - When ready, synthesize the final agreed-upon Ukrainian text in `approved_source_text`:
-     {{
-       "status": "ready",
-       "assistant_message": null,
-       "approved_source_text": "<The definitive approved source text in {source_lang}>"
-     }}
+Напрямок перекладу: з {source_lang} на {target_lang}.
 
-CRITICAL: Respond ONLY with valid JSON strictly adhering to the schema. No markdown code blocks, no extra commentary outside JSON.
+ЯК ТИ МАЄШ ПРАЦЮВАТИ:
+1. **Спілкування та допомога (Діалог як асистент):**
+   - Спілкуйся природно та ввічливо українською мовою.
+   - Якщо користувач просить допомогти написати текст, придумати привітання, підколоти когось, перефразувати або висловлює незрозумілу/неповну думку:
+     Запропонуй 2-3 якісні варіанти тексту з різними відтінками, поясни їх і запитай користувача, який варіант підходить або що змінити.
+   - НЕ викликай інструмент перекладача, доки текст не сформульовано і не погоджено!
+
+2. **Виклик інструменту перекладача (`translate_text`):**
+   - У тебе є інструмент `translate_text(source_text="...")`.
+   - Викликай `translate_text` ТІЛЬКИ тоді, коли:
+     a) Користувач обрав/схвалив варіант або прямо сказав перекладати (наприклад: "перекладай 1-й варіант", "так, перекладай", "чудово, давай", "підходить", "переклади це").
+     b) Користувач надіслав однозначний, повністю готовий текст для адресата (без інструкцій до асистента) і хоче його перекласти.
+   - Передай у `source_text` узгоджений фінальний варіант тексту.
+
+3. **Принцип сумніву:**
+   - Якщо є найменший сумнів, чи це прохання до тебе допомогти скласти текст, чи готове повідомлення для адресата — СПРИЙМАЙ ЦЕ ЯК РОЗМОВУ З АСИСТЕНТОМ, допоможи користувачеві розібратися і запропонуй варіанти.
 """
 
 
@@ -60,8 +73,7 @@ class AssistantService:
         api_key: str,
     ) -> AssistantTurnResult:
         """
-        Executes a turn in the assistant intent-clarification and collaborative writing dialogue.
-        Reasoning / deep context analysis is enabled for optimal assistance quality.
+        Executes an assistant turn with function/tool calling support.
         """
         model_id = PROVIDERS_INFO.get(provider_name, {}).get("model", "google/gemini-2.5-flash")
         client = AsyncOpenAI(
@@ -81,35 +93,41 @@ class AssistantService:
         messages = [{"role": "system", "content": system_instruction}] + conversation_history
 
         try:
-            # Reasoning is allowed in assistant mode for deep contextual understanding
             response = await client.chat.completions.create(
                 model=model_id,
                 messages=messages,
-                temperature=0.4,
+                tools=[TRANSLATE_TOOL],
+                tool_choice="auto",
+                temperature=0.5,
             )
-            raw_content = response.choices[0].message.content or ""
-            clean_json = re.sub(r"^```(?:json)?\s*", "", raw_content.strip(), flags=re.IGNORECASE)
-            clean_json = re.sub(r"\s*```$", "", clean_json.strip())
+            msg = response.choices[0].message
+            tool_calls = msg.tool_calls or []
+            content = msg.content or ""
 
-            data = json.loads(clean_json)
-            status = data.get("status", "ready")
-            assist_msg = data.get("assistant_message")
-            approved_text = data.get("approved_source_text")
+            # Check if model decided to call the translator tool
+            for tc in tool_calls:
+                if tc.function.name == "translate_text":
+                    try:
+                        args = json.loads(tc.function.arguments)
+                        source_text = args.get("source_text", "").strip()
+                        if source_text:
+                            return AssistantTurnResult(
+                                status="ready",
+                                assistant_message=content.strip() if content else None,
+                                approved_source_text=source_text,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Error parsing translate_text tool arguments: {e}")
 
-            if status == "clarifying" and assist_msg:
-                return AssistantTurnResult(
-                    status="clarifying",
-                    assistant_message=assist_msg.strip(),
-                    approved_source_text=None,
-                )
-            elif status == "ready":
-                return AssistantTurnResult(
-                    status="ready",
-                    assistant_message=None,
-                    approved_source_text=approved_text.strip() if approved_text else None,
-                )
+            # If no tool called, it's a conversation/drafting turn
+            return AssistantTurnResult(
+                status="clarifying",
+                assistant_message=content.strip() if content else "Чим я можу допомогти вам сформулювати або перекласти?",
+                approved_source_text=None,
+            )
+
         except Exception as e:
-            logger.warning(f"Assistant dialogue turn error: {e}")
+            logger.warning(f"Assistant tool-calling turn error: {e}")
 
         # Fallback
         last_user_text = next((m["content"] for m in reversed(conversation_history) if m["role"] == "user"), "")
