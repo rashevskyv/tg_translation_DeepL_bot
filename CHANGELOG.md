@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.3] - 2026-08-15
+
+### Changed
+- **Back-Translation Verification in Native Blockquote (`src/handlers/translation.py`):**
+  - Styled the verification back-translation text inside native Telegram `<blockquote>...</blockquote>` for enhanced readability and clear distinction from the primary translation code block.
+
+---
+
 ## [0.6.2] - 2026-08-15
 
 ### Added
-- **Native Telegram Blockquotes and Emoji Headers Support (`src/utils/formatter.py`):**
-  - Markdown quotes (`> text`) are automatically grouped and rendered as native Telegram `<blockquote>...</blockquote>` blocks.
-  - Markdown headers (`#`, `##`, `###`, `####`) are styled with clean structured emojis (`📌`, `🔹`, `🔸`, `▫️`) and bold text (`<b>...</b>`).
-  - Cleaned horizontal rules and consecutive line breaks.
+- Native Telegram Blockquotes and Emoji Headers Support in Assistant responses.
 
 ---
 
@@ -21,10 +26,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed `language_normalizer` and `DEEPL_VALID_TARGET_CODES` module exports.
-
----
-
-## [0.6.0] - 2026-08-15
-
-### Added
-- Integrated high-performance translation models Qwen 3.7 Flash and Mistral Small 3.

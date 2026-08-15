@@ -159,7 +159,7 @@ async def _execute_translation(
             final_html = (
                 f"<code>{html.escape(translated_text)}</code>\n\n"
                 f"🔍 <b>Зворотний переклад (верифікація):</b>\n"
-                f"<i>{html.escape(back_translation)}</i>"
+                f"<blockquote>{html.escape(back_translation)}</blockquote>"
             )
         else:
             final_html = f"<code>{html.escape(translated_text)}</code>"
