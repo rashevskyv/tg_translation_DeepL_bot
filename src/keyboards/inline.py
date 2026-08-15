@@ -11,24 +11,24 @@ def get_settings_keyboard(
 ) -> InlineKeyboardMarkup:
     provider_title = PROVIDERS_INFO.get(current_provider, {}).get("name", current_provider.upper())
     assistant_title = PROVIDERS_INFO.get(assistant_provider, {}).get("name", assistant_provider)
-    mode_text = "💡 Assistant Mode (Clarifies Intent)" if assistant_mode else "⚡ Direct Translation"
+    mode_text = "💡 Режим асистента" if assistant_mode else "⚡ Прямий переклад"
 
     keyboard = [
         [
             InlineKeyboardButton(
-                text=f"🌐 Target Language: {current_target}",
+                text=f"🌐 Цільова мова: {current_target}",
                 callback_data="set_target_language_prompt",
             )
         ],
         [
             InlineKeyboardButton(
-                text=f"🤖 Translator: {provider_title}",
+                text=f"🤖 Перекладач: {provider_title}",
                 callback_data="select_provider_menu",
             )
         ],
         [
             InlineKeyboardButton(
-                text=f"🔄 Mode: {mode_text}",
+                text=f"🔄 Режим: {mode_text}",
                 callback_data="toggle_mode_menu",
             )
         ],
@@ -37,7 +37,7 @@ def get_settings_keyboard(
     if assistant_mode:
         keyboard.append([
             InlineKeyboardButton(
-                text=f"🧠 Assistant Engine: {assistant_title}",
+                text=f"🧠 Модель асистента: {assistant_title}",
                 callback_data="select_assistant_provider_menu",
             )
         ])
@@ -45,13 +45,13 @@ def get_settings_keyboard(
     keyboard.extend([
         [
             InlineKeyboardButton(
-                text="🔑 Manage API Keys",
+                text="🔑 Керування API ключами",
                 callback_data="manage_api_keys_menu",
             )
         ],
         [
             InlineKeyboardButton(
-                text="✖️ Close",
+                text="✖️ Закрити",
                 callback_data="close_settings",
             )
         ],
@@ -65,18 +65,18 @@ def get_mode_selection_keyboard(current_assistant_mode: bool) -> InlineKeyboardM
     keyboard = [
         [
             InlineKeyboardButton(
-                text=f"{direct_mark}⚡ Direct Translation",
+                text=f"{direct_mark}⚡ Прямий переклад",
                 callback_data="set_mode:direct",
             )
         ],
         [
             InlineKeyboardButton(
-                text=f"{assist_mark}💡 Assistant Mode (Smart Clarifications)",
+                text=f"{assist_mark}💡 Режим асистента (допомога та діалог)",
                 callback_data="set_mode:assistant",
             )
         ],
         [
-            InlineKeyboardButton(text="⬅️ Back to Settings", callback_data="open_main_settings")
+            InlineKeyboardButton(text="⬅️ Назад до налаштувань", callback_data="open_main_settings")
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -97,7 +97,7 @@ def get_assistant_providers_keyboard(current_provider: str) -> InlineKeyboardMar
             )
         ])
     keyboard.append([
-        InlineKeyboardButton(text="⬅️ Back to Settings", callback_data="open_main_settings")
+        InlineKeyboardButton(text="⬅️ Назад до налаштувань", callback_data="open_main_settings")
     ])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
@@ -115,30 +115,30 @@ def get_providers_keyboard(current_provider: str) -> InlineKeyboardMarkup:
             )
         ])
     keyboard.append([
-        InlineKeyboardButton(text="⬅️ Back to Settings", callback_data="open_main_settings")
+        InlineKeyboardButton(text="⬅️ Назад до налаштувань", callback_data="open_main_settings")
     ])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def get_api_keys_menu_keyboard(configured_keys: Dict[str, bool]) -> InlineKeyboardMarkup:
-    deepl_status = "🟢 Custom Key Set" if configured_keys.get("deepl") else "⚪ Not Set / Env Default"
-    openrouter_status = "🟢 Custom Key Set" if configured_keys.get("openrouter") else "⚪ Not Set / Env Default"
+    deepl_status = "🟢 Власний ключ" if configured_keys.get("deepl") else "⚪ Не встановлено"
+    openrouter_status = "🟢 Власний ключ" if configured_keys.get("openrouter") else "⚪ Не встановлено"
 
     keyboard = [
         [
             InlineKeyboardButton(
-                text=f"DeepL API Key ({deepl_status})",
+                text=f"Ключ DeepL API ({deepl_status})",
                 callback_data="manage_key_for:deepl",
             )
         ],
         [
             InlineKeyboardButton(
-                text=f"OpenRouter API Key ({openrouter_status})",
+                text=f"Ключ OpenRouter API ({openrouter_status})",
                 callback_data="manage_key_for:openrouter",
             )
         ],
         [
-            InlineKeyboardButton(text="⬅️ Back to Settings", callback_data="open_main_settings")
+            InlineKeyboardButton(text="⬅️ Назад до налаштувань", callback_data="open_main_settings")
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -149,7 +149,7 @@ def get_provider_key_action_keyboard(provider: str, has_custom_key: bool) -> Inl
     keyboard = [
         [
             InlineKeyboardButton(
-                text="✏️ Enter / Replace API Key",
+                text="✏️ Ввести / Замінити API ключ",
                 callback_data=f"input_key_for:{provider}",
             )
         ]
@@ -157,13 +157,13 @@ def get_provider_key_action_keyboard(provider: str, has_custom_key: bool) -> Inl
     if has_custom_key:
         keyboard.append([
             InlineKeyboardButton(
-                text="🗑️ Delete Custom Key",
+                text="🗑️ Видалити власний ключ",
                 callback_data=f"delete_key_for:{provider}",
             )
         ])
     keyboard.append([
         InlineKeyboardButton(
-            text="⬅️ Back to Keys Menu",
+            text="⬅️ Назад до меню ключів",
             callback_data="manage_api_keys_menu",
         )
     ])
@@ -173,6 +173,6 @@ def get_provider_key_action_keyboard(provider: str, has_custom_key: bool) -> Inl
 def get_cancel_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="❌ Cancel", callback_data="open_main_settings")]
+            [InlineKeyboardButton(text="❌ Скасувати", callback_data="open_main_settings")]
         ]
     )

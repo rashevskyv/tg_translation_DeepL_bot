@@ -20,7 +20,7 @@ translation_router = Router(name="translation")
 def _get_error_settings_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⚙️ Open Settings", callback_data="open_main_settings")]
+            [InlineKeyboardButton(text="⚙️ Відкрити налаштування", callback_data="open_main_settings")]
         ]
     )
 
@@ -29,8 +29,8 @@ def _get_assistant_turn_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="⚡ Translate As Is", callback_data="force_translate_draft"),
-                InlineKeyboardButton(text="🗑️ Reset Memory", callback_data="reset_assistant_memory"),
+                InlineKeyboardButton(text="⚡ Перекласти як є", callback_data="force_translate_draft"),
+                InlineKeyboardButton(text="🗑️ Очистити пам'ять", callback_data="reset_assistant_memory"),
             ]
         ]
     )
