@@ -27,6 +27,14 @@ class TranslationManager:
                 name="deepseek_flash",
                 model_id="deepseek/deepseek-v4-flash-0731",
             ),
+            "qwen_flash": OpenRouterProvider(
+                name="qwen_flash",
+                model_id="qwen/qwen3.7-flash",
+            ),
+            "mistral_small": OpenRouterProvider(
+                name="mistral_small",
+                model_id="mistralai/mistral-small-24b-instruct-2501",
+            ),
         }
 
     def get_provider(self, name: str) -> BaseTranslationProvider:

@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-08-15
+
+### Added
+- **Integrated High-Performance, Ultra-Cheap Multilingual Translation Models (`src/config.py`, `src/services/manager.py`):**
+  - **Qwen 3.7 Flash (`qwen/qwen3.7-flash`):** $0.03 / $0.13 per 1M tokens, 1M context, exceptional multilingual performance.
+  - **Mistral Small 3 (`mistralai/mistral-small-24b-instruct-2501`):** $0.05 / $0.08 per 1M tokens, industry leader in European languages (FR, DE, ES, IT, PL).
+
+---
+
 ## [0.5.5] - 2026-08-15
 
 ### Changed
-- **Configured Exact Requested Models & Full Settings Localization (`src/config.py`, `src/handlers/settings.py`):**
-  - Updated models: `google/gemini-3.7-flash`, `google/gemini-3.5-flash-lite`, `openai/gpt-5.6-luna`, `deepseek/deepseek-v4-flash-0731`.
-  - Fully translated all remaining settings menu titles and prompts to Ukrainian.
+- Configured exact latest models and full Ukrainian localization of settings menus.
 
 ---
 
@@ -20,10 +27,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Assistant session memory persistence and auto-reset upon switching to translator mode.
-
----
-
-## [0.5.3] - 2026-08-15
-
-### Fixed
-- Markdown-to-HTML formatting converter for Telegram bold, italic, and code blocks.
