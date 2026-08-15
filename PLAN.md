@@ -1,6 +1,6 @@
 # План розробки: Telegram Translation DeepL & Multi-LLM Bot
 
-## Версія: v0.6.0
+## Версія: v0.6.1
 
 ### Мета проекту
 Створення високопродуктивного, асинхронного Telegram-бота для автоматичного двонаправленого перекладу (Українська $\leftrightarrow$ Інші мови) з підтримкою **DeepL (Standalone)** та 6 передових моделей через **OpenRouter** (Gemini 3.5 Flash Lite, Gemini 3.7 Flash, OpenAI GPT-5.6 Luna, DeepSeek V4 Flash, Qwen 3.7 Flash, Mistral Small 3), чистим виведенням у `<code>...</code>`, **Tool-Calling Режимом асистента**, збереженням пам'яті в межах сесії та **повністю українізованим інтерфейсом меню**.

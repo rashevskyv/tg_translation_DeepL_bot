@@ -7,12 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.1] - 2026-08-15
+
+### Fixed
+- **Fixed `language_normalizer` and `DEEPL_VALID_TARGET_CODES` Module Exports (`src/services/language_normalizer.py`):**
+  - Resolved `ImportError` on application startup by exporting `language_normalizer` singleton instance and `DEEPL_VALID_TARGET_CODES` validation set.
+
+---
+
 ## [0.6.0] - 2026-08-15
 
 ### Added
-- **Integrated High-Performance, Ultra-Cheap Multilingual Translation Models (`src/config.py`, `src/services/manager.py`):**
-  - **Qwen 3.7 Flash (`qwen/qwen3.7-flash`):** $0.03 / $0.13 per 1M tokens, 1M context, exceptional multilingual performance.
-  - **Mistral Small 3 (`mistralai/mistral-small-24b-instruct-2501`):** $0.05 / $0.08 per 1M tokens, industry leader in European languages (FR, DE, ES, IT, PL).
+- Integrated high-performance translation models Qwen 3.7 Flash and Mistral Small 3.
 
 ---
 
@@ -20,10 +26,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Configured exact latest models and full Ukrainian localization of settings menus.
-
----
-
-## [0.5.4] - 2026-08-15
-
-### Changed
-- Assistant session memory persistence and auto-reset upon switching to translator mode.

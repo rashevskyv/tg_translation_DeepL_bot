@@ -1,27 +1,21 @@
 # Журнал змін (Walkthrough)
 
-## Версія: v0.6.0 (Розширення лінійки моделей: Qwen 3.7 Flash та Mistral Small 3)
+## Версія: v0.6.1 (Виправлення експорту language_normalizer та DEEPL_VALID_TARGET_CODES)
 
 ### Зміни:
-1. **Аналіз OpenRouter API та додавання нових високоефективних моделей (`src/config.py`, `src/services/manager.py`):**
-   - 🟣 **Qwen 3.7 Flash (`qwen/qwen3.7-flash`):**
-     - Наддешева ціна ($0.03 / $0.13 за 1M токенів)
-     - Контекстне вікно 1,000,000 токенів
-     - Виняткова точність для перекладу на східні, європейські та світові мови
-   - 🇪🇺 **Mistral Small 3 (`mistralai/mistral-small-24b-instruct-2501`):**
-     - Визнаний європейський лідер для перекладу європейських мов (французька, німецька, іспанська, італійська, польська)
-     - Вартість всього ($0.05 / $0.08 за 1M токенів)
-   - Повний список підтримуваних рушіїв тепер налічує 7 провайдерів: `DeepL`, `Gemini 3.7 Flash`, `Gemini 3.5 Flash Lite`, `OpenAI GPT-5.6 Luna`, `DeepSeek V4 Flash`, `Qwen 3.7 Flash`, `Mistral Small 3`.
+1. **Виправлено імпорт у `src/services/language_normalizer.py`:**
+   - Експортовано екземпляр класу `language_normalizer` (`LanguageNormalizer`) та множину `DEEPL_VALID_TARGET_CODES`.
+   - Усунено помилку `ImportError: cannot import name 'language_normalizer'` при запуску сервісу на сервері.
 
 2. **Тестування:**
    - Всі 33 тести успішно виконані паралельно (`pytest -n auto`).
 
 ---
 
-## Версія: v0.5.5 (Оновлення моделей OpenRouter та повна українізація меню налаштувань)
-- Gemini 3.5/3.7, GPT-5.6 Luna, DeepSeek V4 Flash.
+## Версія: v0.6.0 (Розширення лінійки моделей: Qwen 3.7 Flash та Mistral Small 3)
+- Інтеграція Qwen 3.7 Flash та Mistral Small 3.
 
 ---
 
-## Версія: v0.5.4 (Управління життєвим циклом пам'яті асистента в межах сесії)
-- Автоматичне скидання пам'яті при переході на режим прямого перекладу.
+## Версія: v0.5.5 (Оновлення моделей OpenRouter та повна українізація меню налаштувань)
+- Gemini 3.5/3.7, GPT-5.6 Luna, DeepSeek V4 Flash.
