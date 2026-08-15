@@ -1,29 +1,31 @@
 import os
-from pathlib import Path
-from typing import Dict, List, Optional
 import aiosqlite
-from pydantic import BaseModel
+import logging
+from typing import Dict, List, Optional, NamedTuple
 from src.config import settings, SUPPORTED_PROVIDERS, PROVIDERS_INFO
 
-VALID_KEY_PROVIDERS = set(SUPPORTED_PROVIDERS) | {"openrouter", "openai", "deepl"}
+logger = logging.getLogger(__name__)
+
+VALID_KEY_PROVIDERS = set(SUPPORTED_PROVIDERS).union({"openrouter"})
 
 
-class UserSettings(BaseModel):
+class UserSettings(NamedTuple):
     user_id: int
-    target_language: str = "English"
-    selected_provider: str = "deepl"
-    assistant_mode: bool = False
-    assistant_provider: str = "gemini_flash"
+    target_language: str
+    selected_provider: str
+    assistant_mode: bool
+    assistant_provider: str
 
 
 class DatabaseManager:
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or settings.database_path
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
     async def init_db(self) -> None:
-        """Initializes database schema and handles migrations."""
+        """Initializes tables and indexes."""
+        os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
         async with aiosqlite.connect(self.db_path) as db:
+            # Users settings table
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_settings (
@@ -34,20 +36,33 @@ class DatabaseManager:
                     assistant_provider TEXT NOT NULL DEFAULT 'gemini_flash',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+                )
                 """
             )
+            
+            # Migration check: ensure assistant columns exist in older DBs
+            async with db.execute("PRAGMA table_info(user_settings)") as cursor:
+                columns = [row[1] for row in await cursor.fetchall()]
+                if "assistant_mode" not in columns:
+                    await db.execute("ALTER TABLE user_settings ADD COLUMN assistant_mode INTEGER NOT NULL DEFAULT 0")
+                if "assistant_provider" not in columns:
+                    await db.execute("ALTER TABLE user_settings ADD COLUMN assistant_provider TEXT NOT NULL DEFAULT 'gemini_flash'")
+
+            # User custom API keys table
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS user_api_keys (
                     user_id INTEGER NOT NULL,
                     provider TEXT NOT NULL,
                     api_key TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (user_id, provider)
-                );
+                )
                 """
             )
+
+            # Assistant session conversation memory table
             await db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS assistant_messages (
@@ -56,31 +71,17 @@ class DatabaseManager:
                     role TEXT NOT NULL,
                     content TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+                )
                 """
             )
             await db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_assistant_user_created 
-                ON assistant_messages(user_id, created_at);
-                """
+                "CREATE INDEX IF NOT EXISTS idx_assistant_user_created ON assistant_messages(user_id, created_at)"
             )
-
-            # Safe column migrations if database already existed with older schema
-            try:
-                await db.execute("ALTER TABLE user_settings ADD COLUMN assistant_mode INTEGER NOT NULL DEFAULT 0;")
-            except Exception:
-                pass
-
-            try:
-                await db.execute("ALTER TABLE user_settings ADD COLUMN assistant_provider TEXT NOT NULL DEFAULT 'gemini_flash';")
-            except Exception:
-                pass
 
             await db.commit()
 
     async def get_user_settings(self, user_id: int) -> UserSettings:
-        """Fetches user settings, creating defaults if not existing."""
+        """Fetches or initializes user settings."""
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute(
                 "SELECT target_language, selected_provider, assistant_mode, assistant_provider FROM user_settings WHERE user_id = ?",
@@ -93,64 +94,64 @@ class DatabaseManager:
                         target_language=row[0],
                         selected_provider=row[1],
                         assistant_mode=bool(row[2]),
-                        assistant_provider=row[3] or "gemini_flash",
+                        assistant_provider=row[3] if len(row) > 3 and row[3] else "gemini_flash",
                     )
 
-            # Insert default if not present
-            default_lang = settings.default_target_language
+            # Insert defaults
+            default_target = settings.default_target_language
             default_provider = settings.default_provider
+            default_assist_provider = "gemini_flash"
             await db.execute(
                 """
-                INSERT OR IGNORE INTO user_settings (user_id, target_language, selected_provider, assistant_mode, assistant_provider)
-                VALUES (?, ?, ?, 0, 'gemini_flash')
+                INSERT INTO user_settings (user_id, target_language, selected_provider, assistant_mode, assistant_provider)
+                VALUES (?, ?, ?, 0, ?)
                 """,
-                (user_id, default_lang, default_provider),
+                (user_id, default_target, default_provider, default_assist_provider),
             )
             await db.commit()
             return UserSettings(
                 user_id=user_id,
-                target_language=default_lang,
+                target_language=default_target,
                 selected_provider=default_provider,
                 assistant_mode=False,
-                assistant_provider="gemini_flash",
+                assistant_provider=default_assist_provider,
             )
 
     async def set_target_language(self, user_id: int, target_language: str) -> None:
-        """Updates user target language."""
-        cleaned_lang = target_language.strip().capitalize()
+        """Updates user's preferred target language."""
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
-                INSERT INTO user_settings (user_id, target_language, selected_provider, updated_at)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO user_settings (user_id, target_language, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
                     target_language = excluded.target_language,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (user_id, cleaned_lang, settings.default_provider),
+                (user_id, target_language.strip().title()),
             )
             await db.commit()
 
     async def set_user_provider(self, user_id: int, provider: str) -> None:
-        """Updates active translation provider for the user."""
+        """Updates user's active translation provider."""
         if provider not in SUPPORTED_PROVIDERS:
             raise ValueError(f"Unsupported provider: {provider}")
+
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
-                INSERT INTO user_settings (user_id, target_language, selected_provider, updated_at)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO user_settings (user_id, selected_provider, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
                     selected_provider = excluded.selected_provider,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (user_id, settings.default_target_language, provider),
+                (user_id, provider),
             )
             await db.commit()
 
-    async def set_assistant_mode(self, user_id: int, enabled: bool) -> None:
-        """Toggles assistant mode on/off."""
-        val = 1 if enabled else 0
+    async def set_assistant_mode(self, user_id: int, assistant_mode: bool) -> None:
+        """Toggles assistant mode (Direct Translation vs Assistant Clarification Mode)."""
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
@@ -160,14 +161,15 @@ class DatabaseManager:
                     assistant_mode = excluded.assistant_mode,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (user_id, val),
+                (user_id, 1 if assistant_mode else 0),
             )
             await db.commit()
 
-    async def set_assistant_provider(self, user_id: int, provider: str) -> None:
-        """Sets active assistant model."""
-        if provider not in SUPPORTED_PROVIDERS:
-            raise ValueError(f"Unsupported provider: {provider}")
+    async def set_assistant_provider(self, user_id: int, assistant_provider: str) -> None:
+        """Updates user's dedicated assistant reasoning engine."""
+        if assistant_provider not in SUPPORTED_PROVIDERS:
+            raise ValueError(f"Unsupported provider: {assistant_provider}")
+
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """
@@ -177,14 +179,15 @@ class DatabaseManager:
                     assistant_provider = excluded.assistant_provider,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (user_id, provider),
+                (user_id, assistant_provider),
             )
             await db.commit()
 
     async def set_user_api_key(self, user_id: int, provider: str, api_key: str) -> None:
-        """Saves custom API key for a specific provider."""
+        """Saves or updates custom user API key for a specific provider."""
         if provider not in VALID_KEY_PROVIDERS:
             raise ValueError(f"Unsupported provider: {provider}")
+
         clean_key = api_key.strip()
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
@@ -249,38 +252,29 @@ class DatabaseManager:
             if settings.openrouter_api_key:
                 return settings.openrouter_api_key
 
-        # 3. Fallbacks from settings
-        fallback_map = {
-            "deepl": settings.deepl_api_key,
-            "openrouter": settings.openrouter_api_key,
-            "openai": settings.openai_api_key,
-        }
-        return fallback_map.get(provider) or None
+        # 3. Check direct env key
+        if provider == "deepl" and settings.deepl_api_key:
+            return settings.deepl_api_key
+        if provider == "openai" and settings.openai_api_key:
+            return settings.openai_api_key
 
-    # --- Assistant Conversation History (Last 30 messages or 2 hours) ---
+        return None
+
+    # --- Assistant Conversation Session Memory Management ---
 
     async def add_assistant_message(self, user_id: int, role: str, content: str) -> None:
-        """Stores a message turn in assistant history, pruning messages > 2h or > 30 entries."""
+        """Stores a conversation turn (user or assistant) for current session."""
         async with aiosqlite.connect(self.db_path) as db:
-            # 1. Insert new message
+            # 1. Insert message
             await db.execute(
                 """
-                INSERT INTO assistant_messages (user_id, role, content, created_at)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO assistant_messages (user_id, role, content)
+                VALUES (?, ?, ?)
                 """,
                 (user_id, role, content),
             )
 
-            # 2. Clean messages older than 2 hours
-            await db.execute(
-                """
-                DELETE FROM assistant_messages
-                WHERE user_id = ? AND created_at < datetime('now', '-2 hours')
-                """,
-                (user_id,),
-            )
-
-            # 3. Limit to the latest 30 messages
+            # 2. Limit to the latest 30 messages in session
             await db.execute(
                 """
                 DELETE FROM assistant_messages
@@ -296,18 +290,8 @@ class DatabaseManager:
             await db.commit()
 
     async def get_assistant_history(self, user_id: int) -> List[Dict[str, str]]:
-        """Fetches up to 30 recent messages within the last 2 hours for user_id."""
+        """Fetches up to 30 recent messages for the current assistant session."""
         async with aiosqlite.connect(self.db_path) as db:
-            # First prune expired
-            await db.execute(
-                """
-                DELETE FROM assistant_messages
-                WHERE user_id = ? AND created_at < datetime('now', '-2 hours')
-                """,
-                (user_id,),
-            )
-            await db.commit()
-
             async with db.execute(
                 """
                 SELECT role, content FROM (
@@ -329,4 +313,5 @@ class DatabaseManager:
             await db.commit()
 
 
+# Singleton database manager instance
 db_manager = DatabaseManager()

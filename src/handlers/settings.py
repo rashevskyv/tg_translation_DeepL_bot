@@ -222,11 +222,16 @@ async def callback_set_mode(query: CallbackQuery, state: FSMContext) -> None:
     is_assistant = (mode == "assistant")
     user_id = query.from_user.id
     await db_manager.set_assistant_mode(user_id, is_assistant)
+
+    # Automatically wipe assistant session memory when user switches to direct translation
+    if not is_assistant:
+        await db_manager.clear_assistant_history(user_id)
+
     user_settings = await db_manager.get_user_settings(user_id)
 
-    mode_title = "💡 Assistant Mode" if is_assistant else "⚡ Direct Translation"
+    mode_title = "💡 Режим асистента" if is_assistant else "⚡ Прямий переклад"
     await query.message.edit_text(
-        f"✅ Translation mode updated to <b>{mode_title}</b>.",
+        f"✅ Режим перекладу змінено на <b>{mode_title}</b>.",
         parse_mode="HTML",
         reply_markup=get_settings_keyboard(
             user_settings.target_language,

@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.4] - 2026-08-15
+
+### Changed
+- **Assistant Session Memory Lifecycle Management (`src/database/db.py`, `src/handlers/settings.py`):**
+  - Assistant conversation history is preserved throughout the active assistant session (up to 30 messages).
+  - Memory is automatically cleared as soon as the user switches back to Direct Translation Mode.
+
+---
+
 ## [0.5.3] - 2026-08-15
 
 ### Fixed
-- **Markdown-to-HTML Formatting Converter (`src/utils/formatter.py`, `src/handlers/translation.py`):**
-  - Resolved raw Markdown asterisks (`**bold**`, `*italic*`, ````code````) in Telegram messages by parsing and transforming them to valid Telegram HTML (`<b>...</b>`, `<i>...</i>`, `<pre><code>...</code></pre>`).
-  - Added comprehensive test coverage in `tests/test_formatter.py`.
+- Markdown-to-HTML formatting converter for Telegram bold, italic, and code blocks.
 
 ---
 
@@ -20,10 +27,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Recalibrated assistant persona for accurate context understanding and user-driven emotional calibration.
-
----
-
-## [0.5.1] - 2026-08-15
-
-### Changed
-- Full Ukrainian localization of all bot interface buttons.
