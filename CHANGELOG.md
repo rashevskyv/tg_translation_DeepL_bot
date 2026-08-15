@@ -7,25 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.2] - 2026-08-15
+
+### Changed
+- **Assistant Prompt Recalibration for Intent & Tone Control (`src/services/assistant.py`):**
+  - Shifted assistant persona from generic wit to accurate context understanding and user-driven emotional calibration.
+  - Assistant analyzes context, clarifies missing details, and adjusts text tone on demand (from calm/neutral or diplomatic to threatening, firm, or sarcastic).
+  - Strictly calls `translate_text` once user confirms satisfaction with the drafted formulation.
+
+---
+
 ## [0.5.1] - 2026-08-15
 
 ### Changed
-- **Full Ukrainian Localization for All Bot Buttons (`src/keyboards/reply.py`, `src/keyboards/inline.py`, `src/handlers/translation.py`):**
-  - Localized persistent reply keyboards (`⚙️ Налаштування`, `ℹ️ Допомога`).
-  - Localized all interactive inline setting buttons (`🌐 Цільова мова`, `🤖 Перекладач`, `🔄 Режим`, `🧠 Модель асистента`, `🔑 Керування API ключами`, `✖️ Закрити`, `⚡ Перекласти як є`, `🗑️ Очистити пам'ять`, `❌ Скасувати`).
+- Full Ukrainian localization of all bot interface buttons.
 
 ---
 
 ## [0.5.0] - 2026-08-15
 
 ### Added
-- **Tool Calling Architecture for Assistant (`src/services/assistant.py`):**
-  - Integrated `translate_text(source_text="...")` tool directly into LLM assistant context.
-  - Translator is invoked strictly as a callable tool once intent is finalized and approved by the user.
-
----
-
-## [0.4.2] - 2026-08-14
-
-### Changed
-- Reasoning enabled exclusively for assistant mode.
+- Tool Calling Architecture for Assistant (`translate_text` callable tool).
